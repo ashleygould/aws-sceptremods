@@ -1,0 +1,20 @@
+template_path: templates/vpc.py
+
+sceptre_user_data:
+  VpcCIDR: 10.128.0.0/16
+  AZCount: 3
+  UseDefaultSubnets: True
+  Tags:
+    tag1: value1
+    tag2: value2
+  CustomSubnets:
+    DB:
+      net_type: private
+      gateway_subnet: Public
+      priority: 2
+
+stack_tags:
+  seg:team: syseng
+  seg:app: example
+  seg:env: test
+
