@@ -1,0 +1,15 @@
+template_path: templates/vpc_wrapper.py
+
+sceptre_user_data:
+  VpcCIDR: 10.130.0.0/16
+  AZCount: 1
+  UseDefaultSubnets: False
+  CustomSubnets:
+    Ashely:
+      net_type: public
+      priority: 3
+
+stack_tags:
+  seg:team: syseng
+  seg:app: wrappertest
+  seg:env: test

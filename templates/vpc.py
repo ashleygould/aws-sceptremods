@@ -165,6 +165,9 @@ class VPC(object):
         self.user_data = user_data
         self.spec = var_spec
         self.validator = validator
+        ## debugging
+        #print(self.user_data)
+        #print(self.spec)
 
 
     def help(self):
@@ -180,7 +183,7 @@ class VPC(object):
 
     def validate_user_data(self):
         for var, attr  in self.user_data.items():
-            if attr not in self.spec:
+            if var not in self.spec:
                 raise ValueError("{} not a valid variable".format(var))
             if not isinstance(attr, self.spec[var]['type']):
                 raise ValueError("'{}' must be of type {}".format(
