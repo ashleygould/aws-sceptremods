@@ -1,3 +1,4 @@
 *.swp
 *.vpc
 __pycache__
+*.egg-info

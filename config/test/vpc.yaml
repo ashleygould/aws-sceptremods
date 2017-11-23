@@ -1,5 +1,11 @@
 template_path: templates/vpc_wrapper.py
 
+stack_tags:
+  seg:team: syseng
+  seg:app: sceptremods
+  seg:env: test
+
+# Build as single public subnet named Ashley in a single Availablility Zone.
 sceptre_user_data:
   VpcCIDR: 10.130.0.0/16
   AZCount: 1
@@ -7,9 +13,4 @@ sceptre_user_data:
   CustomSubnets:
     Ashely:
       net_type: public
-      priority: 3
-
-stack_tags:
-  seg:team: syseng
-  seg:app: wrappertest
-  seg:env: test
+      priority: 2

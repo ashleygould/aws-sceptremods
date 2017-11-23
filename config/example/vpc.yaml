@@ -1,0 +1,12 @@
+template_path: templates/vpc_wrapper.py
+
+stack_tags:
+  seg:team: syseng
+  seg:app: example
+  seg:env: test
+
+# Build default Public/Private subnets in 3 Avaliability Zones
+sceptre_user_data:
+  VpcCIDR: 10.128.0.0/16
+  AZCount: 3
+
