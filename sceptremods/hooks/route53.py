@@ -1,10 +1,8 @@
 # -*- coding: utf-8 -*-
 import uuid
 import re
-from six import string_types
 
 from sceptre.hooks import Hook
-from sceptre.exceptions import InvalidHookArgumentTypeError
 from sceptre.exceptions import InvalidHookArgumentSyntaxError
 
 
@@ -26,22 +24,15 @@ class Route53HostedZone(Hook):
         """
         TODO: approprieat comments
 
-        :raises: InvalidHookArgumentTypeError, if argument is not a string.
         :raises: InvalidHookArgumentSyntaxError, if argument is not a valid 
                  domain name.
         """
 
-        if not isinstance(self.argument, string_types):
-            raise InvalidHookArgumentTypeError(
-                'The argument "{0}" is the wrong type - route53_hosted_zone '
-                'hook requires arguments of type string.'.format(self.argument)
-            )
-
         domain_re = re.compile(r'[a-zA-Z\d-]{,63}(\.[a-zA-Z\d-]{,63})*')
-        if not domain_re.match(self.argument):
+        if not (self.argument and domain_re.match(self.argument)):
             raise InvalidHookArgumentSyntaxError(
-                'The argument "{}" is not valid - route53_hosted_zone '
-                'hook requires argument must be a valid domain name.'
+                'route53_hosted_zone: '
+                'argument "{}" is not a valid domain name.'.format(self.argument)
             )
 
         zone_name = self.argument
@@ -56,8 +47,12 @@ class Route53HostedZone(Hook):
         # TODO: check for NextMarker in response
         for zone in response["HostedZones"]:
             if zone["Name"] == zone_name:
-                self.logger.debug('found zone_id: {}'.format(zone["Id"]))
-                return self.parse_zone_id(zone["Id"])
+                zone_id = self.parse_zone_id(zone["Id"])
+                self.logger.debug(
+                    'found hosted zone {} with zone Id: {}'.format(
+                    zone_name, zone_id)
+                )
+                return zone_id
 
         # create new hosted zone
         reference = uuid.uuid4().hex
@@ -69,5 +64,9 @@ class Route53HostedZone(Hook):
                 CallerReference=reference,
             )
         )
-        self.logger.debug('created zone_id: {}'.format(response["HostedZone"]["Id"]))
-        return self.parse_zone_id(response["HostedZone"]["Id"])
+        zone_id = self.parse_zone_id(response["HostedZone"]["Id"])
+        self.logger.debug(
+            'created hosted zone {} with zone Id: {}'.format(
+            zone_name, zone_id)
+        )
+        return zone_id
