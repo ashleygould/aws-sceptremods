@@ -11,3 +11,4 @@ Usage Examples
 
   sceptre launch-env test
 
+ashley-sceptre_project> sceptre --debug --dir example launch-env test
