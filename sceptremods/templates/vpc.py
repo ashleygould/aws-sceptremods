@@ -236,7 +236,7 @@ class VPC(object):
                 VPC_NAME,
                 CidrBlock=self.variables['VpcCIDR'],
                 EnableDnsHostnames=True,
-                #Tags=Tags(self.variables['Tags']),
+                Tags=Tags(self.variables['Tags']),
                 ))
         t.add_output(Output("VpcId", Value=VPC_ID))
         t.add_output(Output("CIDR", Value=self.variables['VpcCIDR']))

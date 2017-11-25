@@ -1,12 +1,17 @@
 template_path: templates/vpc_wrapper.py
 
+hooks:
+  before_create:
+    - !route53_hosted_zone sceptremods.example.com
+
 stack_tags:
-  seg:team: syseng
-  seg:app: example
-  seg:env: test
+  team: engineering
+  app: sceptremods
+  env: example
 
 # Build default Public/Private subnets in 3 Avaliability Zones
 sceptre_user_data:
   VpcCIDR: 10.128.0.0/16
   AZCount: 3
-
+  Tags:
+    stackermods_version: !package_version sceptremods

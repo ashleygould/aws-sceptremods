@@ -10,5 +10,7 @@ class PackageVersion(Resolver):
     def resolve(self):
         package_name = self.argument
         importlib.import_module(package_name)
+        self.logger.debug('package_version: {}'.format(
+                getattr(sys.modules[package_name], "__version__")))
         return getattr(sys.modules[package_name], "__version__", str())
 

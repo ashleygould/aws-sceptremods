@@ -8,7 +8,7 @@ from sceptre.exceptions import InvalidHookArgumentSyntaxError
 
 class Route53HostedZone(Hook):
     """
-    TODO: approprieat comments
+    Check if the specified route53 hosted zone exists.  If not, create it.
     """
 
     def __init__(self, *args, **kwargs):
@@ -22,7 +22,8 @@ class Route53HostedZone(Hook):
 
     def run(self):
         """
-        TODO: approprieat comments
+        Check if a route53 hosted zone exists for the domain name passed
+        in self.arguments.  If not, create it.
 
         :raises: InvalidHookArgumentSyntaxError, if argument is not a valid 
                  domain name.
@@ -44,13 +45,20 @@ class Route53HostedZone(Hook):
             service="route53",
             command="list_hosted_zones",
         )
-        # TODO: check for NextMarker in response
-        for zone in response["HostedZones"]:
+        hosted_zones = response["HostedZones"]
+        while response["IsTruncated"]:
+            response = self.connection_manager.call(
+                service="route53",
+                command="list_hosted_zones",
+                kwargs=dict(Marker=reponse["NextMarker"]),
+            )
+            hosted_zones += response["HostedZones"]
+        for zone in hosted_zones:
             if zone["Name"] == zone_name:
                 zone_id = self.parse_zone_id(zone["Id"])
                 self.logger.debug(
-                    'found hosted zone {} with zone Id: {}'.format(
-                    zone_name, zone_id)
+                    '{} - Found hosted zone "{}" with zone id "{}"'.format(
+                    __name__, zone_name, zone_id)
                 )
                 return zone_id
 
@@ -66,7 +74,7 @@ class Route53HostedZone(Hook):
         )
         zone_id = self.parse_zone_id(response["HostedZone"]["Id"])
         self.logger.debug(
-            'created hosted zone {} with zone Id: {}'.format(
-            zone_name, zone_id)
+            '{} - Created hosted zone "{}" with zone id "{}"'.format(
+            __name__, zone_name, zone_id)
         )
         return zone_id
