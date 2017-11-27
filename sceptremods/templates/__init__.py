@@ -3,6 +3,7 @@ import sys
 import types
 import abc
 
+from troposphere import Template
 import sceptremods
 
 
@@ -49,12 +50,14 @@ class VarSpec(object):
             user_data[self.name] = self.default
 
 
+
 class BaseTemplate(object):
     """Base class for building sceptremods troposphere templates"""
 
     __metaclass__ = abc.ABCMeta
 
     def __init__(self, user_data, var_spec=dict()):
+        self.template = Template()
         self.user_data = user_data
         self.var_spec = [VarSpec(var_name, **attributes)
                 for var_name, attributes in var_spec.items()]
@@ -62,7 +65,7 @@ class BaseTemplate(object):
     def validate_user_data(self):
         for var in self.user_data.keys():
             if var not in [spec.name for spec in self.var_spec]:
-                raise ValueError("Variable '{}' is not defined in VarSpec "
+                raise ValueError("Variable '{}' is not defined in VARSPEC "
                 "for this template module".format(var))
         for spec in self.var_spec:
             spec.validate(self.user_data)
@@ -75,10 +78,10 @@ class BaseTemplate(object):
         ## ISSUE: calling_object is '__main__', not spectremods module
         #module_name = getattr(sys.modules[calling_object.__module__], "name")
         #module_name = sys.modules[calling_object.__module__].__package__
-        module_name = calling_object.__class__.__name__
+        class_name = calling_object.__class__.__name__
         module_doc = getattr(sys.modules[calling_object.__module__], "__doc__")
         print("{}\nSpecification of spectre_user_data variables for '{}' "
-                "template class:\n".format(module_doc, module_name))
+                "template class:\n".format(module_doc, class_name))
         for spec in self.var_spec:
             spec.describe()
 
