@@ -1,10 +1,13 @@
 import os
 import sys
+import types
+import abc
 
 import sceptremods
 
 
 class VarSpec(object):
+    __metaclass__ = abc.ABCMeta
 
     def __init__(self, name, type, description=None, default=None, validator=None):
         self.name = name
@@ -25,13 +28,23 @@ class VarSpec(object):
                     "'{}' must be of type {}".format(self.name, self.type)
                 )
             if self.validator:
-                # exceptions get raised within the validator function
+                if not isinstance(self.validator, types.FunctionType):
+                    raise RuntimeError(
+                        "Invalid VARSPEC entry '{}'. Value of 'validator' "
+                        "must be a function".format(self.name)
+                    )
+                # ValurError exceptions get raised in the validator function
                 self.validator(value)
         else:
-            if not self.default:
-                raise ValueError(
+            if self.default == None:
+                raise RuntimeError(
                     "Value of '{}' is undefined and no default is "
                     "specified".format(self.name, self.type)
+                )
+            if not isinstance(self.default, self.type):
+                raise RuntimeError(
+                    "Invalid VARSPEC entry '{}'. Value of 'default' "
+                    "must be of type {}".format(self.name, self.type)
                 )
             user_data[self.name] = self.default
 
@@ -39,28 +52,33 @@ class VarSpec(object):
 class BaseTemplate(object):
     """Base class for building sceptremods troposphere templates"""
 
-    VARIABLES = dict()
+    __metaclass__ = abc.ABCMeta
 
-    def __init__(self, user_data, var_spec=VARIABLES):
+    def __init__(self, user_data, var_spec=dict()):
         self.user_data = user_data
-        self.var_spec = _objectify_var_spec(var_spec)
-
-    def _objectify_var_spec(var_spec):
-        return [VarSpec(var_name, **attributes)
+        self.var_spec = [VarSpec(var_name, **attributes)
                 for var_name, attributes in var_spec.items()]
+
+    def validate_user_data(self):
+        for var in self.user_data.keys():
+            if var not in [spec.name for spec in self.var_spec]:
+                raise ValueError("Variable '{}' is not defined in VarSpec "
+                "for this template module".format(var))
+        for spec in self.var_spec:
+            spec.validate(self.user_data)
+        return self.user_data
 
     def version(self):
         return sceptremods.__version__
 
-    def help(self):
-        print(__doc__)
-        print("\nSpecification of spectre_user_data variables for '{}' "
-                "template module:\n".format(
-                os.path.basename(sys.argv[0].partition('.')[0])))
+    def help(self, calling_object):
+        ## ISSUE: calling_object is '__main__', not spectremods module
+        #module_name = getattr(sys.modules[calling_object.__module__], "name")
+        #module_name = sys.modules[calling_object.__module__].__package__
+        module_name = calling_object.__class__.__name__
+        module_doc = getattr(sys.modules[calling_object.__module__], "__doc__")
+        print("{}\nSpecification of spectre_user_data variables for '{}' "
+                "template class:\n".format(module_doc, module_name))
         for spec in self.var_spec:
             spec.describe()
-
-    def validate_user_data(self):
-        for spec in self.var_spec:
-            spec.validate(self.user_data)
 

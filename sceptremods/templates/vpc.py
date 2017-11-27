@@ -48,6 +48,8 @@ from troposphere import (
     ec2
 )
 
+from sceptremods.templates import BaseTemplate
+
 
 #
 # Globals
@@ -55,55 +57,23 @@ from troposphere import (
 
 # Default public/private subnet layout
 DEFAULT_SUBNETS = {
-        'Public': dict(net_type='public', gateway_subnet=None, priority=0),
-        'Private': dict(net_type='private', gateway_subnet='Public', priority=1)}
+    'Public': dict(
+        net_type='public',
+        gateway_subnet=None,
+        priority=0,
+    ),
+    'Private': dict(
+        net_type='private',
+        gateway_subnet='Public',
+        priority=1,
+    ),
+}
 
 # Some global cfn logical resource names
 GATEWAY = 'InternetGateway'
 GW_ATTACH = 'InternetGatewayAttachment'
 VPC_NAME = 'VPC'
 VPC_ID = Ref(VPC_NAME)
-
-# scepter_user_date variable specifications
-VARIABLES = {
-    'VpcCIDR': {
-        'type': str,
-        'default': '10.10.0.0/16',
-        'description': (
-"""Cidr block for the VPC.  Must define a class B network (i.e. '/16')."""),
-    },
-    'AZCount': {
-        'type': int,
-        'default': 2,
-        'description': (
-"""Number of Availability Zones to use.  Must be an integer less than 10."""),
-    },
-    'UseDefaultSubnets': {
-        'type': bool,
-        'default': True,
-        'description': (
-"""Whether or not to create the default 'Public' and 'Private' subnets."""),
-    },
-    'CustomSubnets': {
-        'type': dict,
-        'default': dict(),
-        'description': (
-"""Dictionary of custom subnets to create in addition to or instead of the
-  default 'Public' and 'Private' subnets.  Each custom subnet is a dictionary
-  with the following keys:
-    'net_type' - either 'public' or 'private',
-    'priority' - integer used to determine the subnet cidr block.  Must
-                 be unique among all subnets.
-    'gateway_subnet' - the public subnet to use as a default route.
-                       Required for subnets of net_type 'private'."""),
-    },
-    'Tags': {
-        'type': dict,
-        'default': dict(),
-        'description': (
-"""Dictionary of tags to apply to stack resources (e.g. {tagname: value})"""),
-    },
-}
 
 
 #
@@ -121,6 +91,12 @@ def validate_cidrblock(cidrblock):
             raise ValueError("'VpcCIDR' must define a class 'B' network")
         return True
     raise ValueError("'%s' not a valid cidr block" % cidrblock)
+
+
+def validate_az_count(count):
+    if count >= 10:
+        raise ValueError("Value of 'AZCount' must be an integer less than 10")
+    return True
 
 
 def validate_custom_subnets(custom_subnets):
@@ -142,62 +118,57 @@ def validate_custom_subnets(custom_subnets):
     return True
 
 
-def validate_az_count(count):
-    if count >= 10:
-        raise ValueError("Value of 'AZCount' must be an integer less than 10")
-    return True
-
-
-# Load up validator functions into a dictionary
-validator = dict(
-        VpcCIDR=validate_cidrblock,
-        CustomSubnets=validate_custom_subnets,
-        AZCount=validate_az_count,
-        )
+#
+# scepter_user_date variable specifications
+#
+VARSPEC = {
+    'VpcCIDR': {
+        'type': str,
+        'default': '10.10.0.0/16',
+        'description': (
+"""Cidr block for the VPC.  Must define a class B network (i.e. '/16')."""),
+        'validator': validate_cidrblock,
+    },
+    'AZCount': {
+        'type': int,
+        'default': 2,
+        'description': (
+"""Number of Availability Zones to use.  Must be an integer less than 10."""),
+        'validator': validate_az_count,
+    },
+    'UseDefaultSubnets': {
+        'type': bool,
+        'default': True,
+        'description': (
+"""Whether or not to create the default 'Public' and 'Private' subnets."""),
+    },
+    'CustomSubnets': {
+        'type': dict,
+        'default': dict(),
+        'description': (
+"""Dictionary of custom subnets to create in addition to or instead of the
+  default 'Public' and 'Private' subnets.  Each custom subnet is a dictionary
+  with the following keys:
+    'net_type' - either 'public' or 'private',
+    'priority' - integer used to determine the subnet cidr block.  Must
+                 be unique among all subnets.
+    'gateway_subnet' - the public subnet to use as a default route.
+                       Required for subnets of net_type 'private'."""),
+        'validator': validate_custom_subnets,
+    },
+    'Tags': {
+        'type': dict,
+        'default': dict(),
+        'description': (
+"""Dictionary of tags to apply to stack resources (e.g. {tagname: value})"""),
+    },
+}
 
 
 #
 # The template class
 #
-class VPC(object):
-
-    def __init__(self, user_data, var_spec, validator):
-        self.user_data = user_data
-        self.spec = var_spec
-        self.validator = validator
-        ## debugging
-        #print(self.user_data)
-        #print(self.spec)
-
-
-    def help(self):
-        print(__doc__)
-        print("\nSpecification of spectre_user_data variables for '{}' "
-                "template module:\n".format(
-                os.path.basename(sys.argv[0].partition('.')[0])))
-        for var, attr in sorted(self.spec.items()):
-            default = attr.get('default', '')
-            desc = attr.get('description', '')
-            print("{}\n  {}\n  Default: {}\n".format(var, desc, default))
-
-
-    def validate_user_data(self):
-        for var, attr  in self.user_data.items():
-            if var not in self.spec:
-                raise ValueError("{} not a valid variable".format(var))
-            if not isinstance(attr, self.spec[var]['type']):
-                raise ValueError("'{}' must be of type {}".format(
-                        var, self.spec[var]['type']))
-            if 'validator' in self.spec[var]:
-                self.spec[var]['validator'](attr)
-        for var in self.spec.keys():
-            if var not in self.user_data:
-                self.user_data[var] = self.spec[var].get('default', None)
-        #defaults = {var: attr['default'] for (var, attr) in self.spec.items()
-        #        if 'default' in attr}
-        #print(defaults)
-        return self.user_data
-
+class VPC(BaseTemplate):
 
     def munge_subnets(self):
         # compose subnet definitions dictionary
@@ -395,14 +366,17 @@ class VPC(object):
 # The sceptre handler
 #
 def sceptre_handler(sceptre_user_data):
-    vpc = VPC(sceptre_user_data, VARIABLES, validator)
+    vpc = VPC(sceptre_user_data, VARSPEC)
     vpc.create_resources()
     return vpc.template.to_json()
 
-
-if __name__ == '__main__':
+def main():
     if len(sys.argv) > 1:
-        VPC(dict(), VARIABLES, validator).help()
+        vpc = VPC(None, VARSPEC)
+        vpc.help(vpc)
     else:
         print(sceptre_handler(dict()))
     
+
+if __name__ == '__main__':
+    main()
