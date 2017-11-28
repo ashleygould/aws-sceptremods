@@ -1,13 +1,26 @@
-Sat Nov 25 11:12:02 PST 2017
+Mon Nov 27 16:10:27 PST 2017
 
 write README
-testing:
+DONE create base class for template modules
+  INPROGRESS add doc strings to new classes in sceptremods.templates
+write test scripts for:
   template
     vpc.py
+    vpc_flowlogs.py
   custom hook
     route53
   custom resolver
     package_version
-add templete for vpc_flowlogs
+DONE add templete for vpc_flowlogs
+  INPROGRESS add doc strings
 add linting of python code (fleck8?)
 automate testing (not a clue)
+
+
+
+
+
+ISSUES:
+can I make a single template wrapper that takes a template module name as param?
+how can I get BaseTemplate.help() to display module name when module is run directly?
+

@@ -4,7 +4,6 @@ defining a VPC Flow Logs configuration.
 """
 
 import sys
-
 from troposphere import (
     GetAtt,
     Join,
@@ -21,9 +20,14 @@ from awacs.aws import (
 )
 import awacs
 import awacs.logs
+
 from sceptremods.templates import BaseTemplate
 from sceptremods.util.policies import flowlogs_assumerole_policy
 
+
+#
+# Globals
+#
 
 ALLOWED_TRAFFIC_TYPES = ["ACCEPT", "REJECT", "ALL"]
 JOINED_TRAFFIC_TYPES = '/'.join(ALLOWED_TRAFFIC_TYPES)
@@ -36,6 +40,9 @@ LOG_RETENTION_VALUES = [
 ]
 
 
+#
+# sceptre_user_data validation functions
+#
 
 def validate_cloudwatch_log_retention(value):
     if value not in LOG_RETENTION_VALUES:
@@ -48,6 +55,53 @@ def validate_cloudwatch_log_retention(value):
     return value
 
 
+def validate_traffic_type(traffic_type):
+    if traffic_type not in ALLOWED_TRAFFIC_TYPES:
+        raise ValueError(
+            "Traffic type must be one of the following: {}".format(
+             '/'.join(ALLOWED_TRAFFIC_TYPES))
+        )
+
+    return traffic_type
+
+
+#
+# scepter_user_date variable specifications
+#
+
+VARSPEC = {
+    "Retention": {
+        "type": int,
+        "description": "Time in days to retain Cloudwatch Logs. Accepted "
+                       "values: {}.".format(str(LOG_RETENTION_VALUES)),
+        #"default": 0,
+        "default": 1,
+        "validator": validate_cloudwatch_log_retention,
+    },
+    "VpcId": {
+        "type": str,
+        "description": "ID of the VPC in which to enable flow logs.",
+        "default": "bogus-VpcId-for-testing-only",
+    },
+    "TrafficType": {
+        "type": str,
+        "description": "Type of traffic to log. Must be one of the "
+                       "following: {}".format('/'.join(ALLOWED_TRAFFIC_TYPES)),
+        "default": "ALL",
+        "validator": validate_traffic_type,
+    },
+    'Tags': {
+        'type': dict,
+        'default': dict(),
+        'description': (
+"""Dictionary of tags to apply to stack resources (e.g. {tagname: value})"""),
+    },
+}
+
+
+#
+# this should get moved somewhere else
+#
 def vpc_flow_log_cloudwatch_policy(log_group_arn):
     return Policy(
         Statement=[
@@ -73,39 +127,6 @@ def vpc_flow_log_cloudwatch_policy(log_group_arn):
         ]
     )
 
-
-def validate_traffic_type(traffic_type):
-    if traffic_type not in ALLOWED_TRAFFIC_TYPES:
-        raise ValueError(
-            "Traffic type must be one of the following: {}".format(
-             '/'.join(ALLOWED_TRAFFIC_TYPES))
-        )
-
-    return traffic_type
-
-
-VARSPEC = {
-    "Retention": {
-        "type": int,
-        "description": "Time in days to retain Cloudwatch Logs. Accepted "
-                       "values: {}.".format(str(LOG_RETENTION_VALUES)),
-        #"default": 0,
-        "default": 1,
-        "validator": validate_cloudwatch_log_retention,
-    },
-    "VpcId": {
-        "type": str,
-        "description": "ID of the VPC in which to enable flow logs.",
-        "default": "bogus-VpcId-for-testing-only",
-    },
-    "TrafficType": {
-        "type": str,
-        "description": "Type of traffic to log. Must be one of the "
-                       "following: {}".format('/'.join(ALLOWED_TRAFFIC_TYPES)),
-        "default": "ALL",
-        "validator": validate_traffic_type,
-    },
-}
 
 class FlowLogs(BaseTemplate):
 

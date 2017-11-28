@@ -1,14 +1,12 @@
 template_path: templates/vpc_flowlogs_wrapper.py
 
-hooks:
-  before_create:
-    - !route53_hosted_zone sceptremods.example.com
-
 stack_tags:
   team: engineering
   app: sceptremods
   env: example
 
 sceptre_user_data:
+  VpcId: !stack_output example/vpc::VpcId
   Tags:
     stackermods_version: !package_version sceptremods
+

@@ -79,6 +79,7 @@ VPC_ID = Ref(VPC_NAME)
 #
 # sceptre_user_data validation functions
 #
+
 def validate_cidrblock(cidrblock):
     import re
     cidr_re = re.compile(r'^(\d{1,3}\.){3}\d{1,3}/\d{1,2}$')
@@ -121,6 +122,7 @@ def validate_custom_subnets(custom_subnets):
 #
 # scepter_user_date variable specifications
 #
+
 VARSPEC = {
     'VpcCIDR': {
         'type': str,
@@ -342,8 +344,7 @@ class VPC(BaseTemplate):
                             NatGatewayId=Ref(nat_gateway)))
 
 
-    def create_resources(self):
-        self.template = Template()
+    def create_template(self):
         self.variables = self.validate_user_data()
         self.subnets = self.munge_subnets()
         self.zones = self.availability_zones()
@@ -367,7 +368,7 @@ class VPC(BaseTemplate):
 #
 def sceptre_handler(sceptre_user_data):
     vpc = VPC(sceptre_user_data, VARSPEC)
-    vpc.create_resources()
+    vpc.create_template()
     return vpc.template.to_json()
 
 def main():
