@@ -6,7 +6,7 @@ A library of trophosphere modules for use with Sceptre
 
 
 Installation
-____________
+------------
 
 Install to python 3.6 virtual environment::
 
@@ -16,7 +16,7 @@ Install to python 3.6 virtual environment::
 
 
 Create a Project
-________________
+----------------
 
 See example project layout in aws-sceptremods/example::
 
@@ -30,7 +30,7 @@ See example project layout in aws-sceptremods/example::
 
 
 Usage Examples
-______________
+--------------
 
 ::
 
@@ -40,9 +40,17 @@ ______________
 
 
 Documentation
-_____________
+-------------
 
-https://sceptre.cloudreach.com/latest/about.html
-https://github.com/cloudreach/sceptre
-https://github.com/cloudreach/sceptre-wordpress-example
+- https://sceptre.cloudreach.com/latest/about.html
+- https://github.com/cloudreach/sceptre
+- http://jinja.pocoo.org/docs/2.10/
+- https://github.com/cloudtools/troposphere
+- https://github.com/cloudtools/awacs
+
+
+Example projects
+----------------
+- https://github.com/cloudreach/sceptre-wordpress-example
+- https://github.com/donovan-said/sceptre
 
