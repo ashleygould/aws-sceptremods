@@ -2,7 +2,8 @@ Mon Nov 27 16:10:27 PST 2017
 
 write README
 DONE create base class for template modules
-  INPROGRESS add doc strings to new classes in sceptremods.templates
+add doc strings to new classes in sceptremods.templates
+add logger object to BaseTemplate
 write test scripts for:
   template
     vpc.py
@@ -21,6 +22,10 @@ automate testing (not a clue)
 
 
 ISSUES:
-can I make a single template wrapper that takes a template module name as param?
 how can I get BaseTemplate.help() to display module name when module is run directly?
+
+
+CONSIDER:
+consider merging ArgSpec class back into BaseTemplate
+make a single template wrapper that takes a template module name as param?
 
