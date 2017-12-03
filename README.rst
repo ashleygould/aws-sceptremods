@@ -29,6 +29,23 @@ See example project layout in aws-sceptremods/example::
             vpc_flowlogs_wrapper.py
 
 
+Or use sceptre init command::
+
+  sceptre init project myprog
+  cd myprog
+  sceptre init env test
+  sceptre init env build
+  sceptre init env prod
+  
+  myprog> find
+  ./templates
+  ./config
+  ./config/prod
+  ./config/config.yaml
+  ./config/build
+  ./config/test
+
+
 Usage Examples
 --------------
 
