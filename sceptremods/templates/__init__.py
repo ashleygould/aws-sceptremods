@@ -1,7 +1,15 @@
+"""
+sceptremods.templates provides two base classes:
+sceptremods.templates.VarSpec
+sceptremods.templates.BaseTemplate
+"""
+
+import os
 import os
 import sys
 import types
 import abc
+from inspect import getmodule, getmodulename, getdoc
 
 from troposphere import Template
 import sceptremods
@@ -55,12 +63,13 @@ class BaseTemplate(object):
     """Base class for building sceptremods troposphere templates"""
 
     __metaclass__ = abc.ABCMeta
+    VARSPEC = {}
 
-    def __init__(self, user_data, var_spec=dict()):
+    def __init__(self, user_data=None):
         self.template = Template()
         self.user_data = user_data
         self.var_spec = [VarSpec(var_name, **attributes)
-                for var_name, attributes in var_spec.items()]
+                for var_name, attributes in self.VARSPEC.items()]
 
     def validate_user_data(self):
         for var in self.user_data.keys():
@@ -74,14 +83,18 @@ class BaseTemplate(object):
     def version(self):
         return sceptremods.__version__
 
-    def help(self, calling_object):
-        ## ISSUE: calling_object is '__main__', not spectremods module
-        #module_name = getattr(sys.modules[calling_object.__module__], "name")
-        #module_name = sys.modules[calling_object.__module__].__package__
-        class_name = calling_object.__class__.__name__
-        module_doc = getattr(sys.modules[calling_object.__module__], "__doc__")
-        print("{}\nSpecification of spectre_user_data variables for '{}' "
-                "template class:\n".format(module_doc, class_name))
+    def help(self):
+        module = getmodule(self)
+        module_name = getmodulename(module.__file__)
+        class_name = self.__class__.__name__
+
+        print('\nSceptremods Version: {}\n'.format(self.version()))
+        print('Module: {}'.format(module_name))
+        if getdoc(module): print(getdoc(module), '\n')
+
+        print('Class: {}'.format('.'.join([module_name, class_name])))
+        if getdoc(self): print(getdoc(self), '\n')
+        print("Specification of spectre_user_data variables:\n")
         for spec in self.var_spec:
             spec.describe()
 

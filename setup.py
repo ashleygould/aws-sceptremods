@@ -5,7 +5,6 @@ from setuptools import setup, find_packages
 from sceptremods import __version__
 
 here = path.abspath(path.dirname(__file__))
-
 with open(path.join(here, 'README.rst')) as f:
     long_description = f.read()
 
@@ -37,15 +36,9 @@ setup(
     ],
     packages=find_packages(exclude=['TODO.txt']),
     include_package_data=True,
-    #package_data={
-    #    'sceptremods': [
-    #        'wrappers',
-    #        'wrappers/*',
-    #    ],
-    #},
     entry_points={
         'console_scripts': [
-            'sceptremods=scripts.projectinit:main',
+            'sceptremods=sceptremods.cli:main',
         ],
     },
 

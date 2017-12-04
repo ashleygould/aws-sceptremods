@@ -156,3 +156,29 @@ def lambda_vpc_execution_statements():
 
 def flowlogs_assumerole_policy():
     return make_simple_assume_policy("vpc-flow-logs.amazonaws.com")
+
+
+def vpc_flow_log_cloudwatch_policy(log_group_arn):
+    return Policy(
+        Statement=[
+            Statement(
+                Effect="Allow",
+                Action=[
+                    awacs.logs.DescribeLogGroups
+                ],
+                Resource=["*"],
+            ),
+            Statement(
+                Effect="Allow",
+                Action=[
+                    awacs.logs.CreateLogStream,
+                    awacs.logs.DescribeLogStreams,
+                    awacs.logs.PutLogEvents,
+                ],
+                Resource=[
+                    log_group_arn,
+                    Join('', [log_group_arn, ":*"]),
+                ],
+            ),
+        ]
+    )

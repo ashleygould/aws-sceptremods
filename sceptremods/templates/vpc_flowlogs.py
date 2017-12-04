@@ -1,6 +1,5 @@
-"""
-A troposphere module for generating an AWS cloudformation template
-defining a VPC Flow Logs configuration.
+"""A troposphere module for generating an AWS cloudformation template defining
+a VPC Flow Logs configuration.
 """
 
 import sys
@@ -22,13 +21,15 @@ import awacs
 import awacs.logs
 
 from sceptremods.templates import BaseTemplate
-from sceptremods.util.policies import flowlogs_assumerole_policy
+from sceptremods.util.policies import (
+    flowlogs_assumerole_policy,
+    vpc_flow_log_cloudwatch_policy,
+)
 
 
 #
 # Globals
 #
-
 ALLOWED_TRAFFIC_TYPES = ["ACCEPT", "REJECT", "ALL"]
 JOINED_TRAFFIC_TYPES = '/'.join(ALLOWED_TRAFFIC_TYPES)
 CLOUDWATCH_ROLE_NAME = "Role"
@@ -43,7 +44,6 @@ LOG_RETENTION_VALUES = [
 #
 # sceptre_user_data validation functions
 #
-
 def validate_cloudwatch_log_retention(value):
     if value not in LOG_RETENTION_VALUES:
         raise ValueError(
@@ -54,81 +54,49 @@ def validate_cloudwatch_log_retention(value):
         )
     return value
 
-
 def validate_traffic_type(traffic_type):
     if traffic_type not in ALLOWED_TRAFFIC_TYPES:
         raise ValueError(
             "Traffic type must be one of the following: {}".format(
              '/'.join(ALLOWED_TRAFFIC_TYPES))
         )
-
     return traffic_type
 
 
 #
-# scepter_user_date variable specifications
+# The template class
 #
-
-VARSPEC = {
-    "Retention": {
-        "type": int,
-        "description": "Time in days to retain Cloudwatch Logs. Accepted "
-                       "values: {}.".format(str(LOG_RETENTION_VALUES)),
-        #"default": 0,
-        "default": 1,
-        "validator": validate_cloudwatch_log_retention,
-    },
-    "VpcId": {
-        "type": str,
-        "description": "ID of the VPC in which to enable flow logs.",
-        "default": "bogus-VpcId-for-testing-only",
-    },
-    "TrafficType": {
-        "type": str,
-        "description": "Type of traffic to log. Must be one of the "
-                       "following: {}".format('/'.join(ALLOWED_TRAFFIC_TYPES)),
-        "default": "ALL",
-        "validator": validate_traffic_type,
-    },
-    'Tags': {
-        'type': dict,
-        'default': dict(),
-        'description': (
-"""Dictionary of tags to apply to stack resources (e.g. {tagname: value})"""),
-    },
-}
-
-
-#
-# this should get moved somewhere else
-#
-def vpc_flow_log_cloudwatch_policy(log_group_arn):
-    return Policy(
-        Statement=[
-            Statement(
-                Effect="Allow",
-                Action=[
-                    awacs.logs.DescribeLogGroups
-                ],
-                Resource=["*"],
-            ),
-            Statement(
-                Effect="Allow",
-                Action=[
-                    awacs.logs.CreateLogStream,
-                    awacs.logs.DescribeLogStreams,
-                    awacs.logs.PutLogEvents,
-                ],
-                Resource=[
-                    log_group_arn,
-                    Join('', [log_group_arn, ":*"]),
-                ],
-            ),
-        ]
-    )
-
-
 class FlowLogs(BaseTemplate):
+
+    VARSPEC = {
+        "Retention": {
+            "type": int,
+            "description": "Time in days to retain Cloudwatch Logs. Accepted "
+                           "values: {}.".format(str(LOG_RETENTION_VALUES)),
+            #"default": 0,
+            "default": 1,
+            "validator": validate_cloudwatch_log_retention,
+        },
+        "VpcId": {
+            "type": str,
+            "description": "ID of the VPC in which to enable flow logs.",
+            "default": "bogus-VpcId-for-testing-only",
+        },
+        "TrafficType": {
+            "type": str,
+            "description": "Type of traffic to log. Must be one of the "
+                           "following: {}".format('/'.join(ALLOWED_TRAFFIC_TYPES)),
+            "default": "ALL",
+            "validator": validate_traffic_type,
+        },
+        'Tags': {
+            'type': dict,
+            'default': dict(),
+            'description': (
+    """Dictionary of tags to apply to stack resources (e.g. {tagname: value})"""),
+        },
+    }
+
 
     def create_template(self):
         t = self.template
@@ -207,17 +175,19 @@ class FlowLogs(BaseTemplate):
 # The sceptre handler
 #
 def sceptre_handler(sceptre_user_data):
-    flow_logs = FlowLogs(sceptre_user_data, VARSPEC)
+    flow_logs = FlowLogs(sceptre_user_data)
     flow_logs.create_template()
     return flow_logs.template.to_json()
 
 def main():
+    """
+    When called as a script, print out the generated template.
+    If any arg is supplied, call the template class help method.
+    """
     if len(sys.argv) > 1:
-        flow_logs = FlowLogs(None, VARSPEC)
-        flow_logs.help(flow_logs)
+        FlowLogs().help()
     else:
         print(sceptre_handler(dict()))
-    
 
 if __name__ == '__main__':
     main()
