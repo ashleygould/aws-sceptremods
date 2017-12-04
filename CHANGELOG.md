@@ -1,3 +1,8 @@
+Release 0.0.3 - Mon Dec  4 14:20:31 PST 2017
+- complete sceptremods.cli
+- add scripts.sceptrmods
+- update README
+
 Release 0.0.2 - Mon Nov 27 16:50:50 PST 2017
 - add template wrapper: vpc_flowlogs_wrapper.py
 - add new template mod: vpc_flowlogs

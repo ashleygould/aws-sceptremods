@@ -21,5 +21,5 @@
   Use the contents of the latest CHANGELOG entry for the body.
 
 # Helper to create CHANGELOG entries
-git log --reverse --pretty=format:"%s" | tail -100 | sed 's/^/- /'
+git log --pretty=format:"%s" | tail -100 | sed 's/^/- /'
 
