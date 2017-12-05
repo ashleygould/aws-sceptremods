@@ -20,16 +20,16 @@ alternative sceptre_user_data values in a vpc.yaml file.  Example:
       tag1: value1
       tag2: value2
     CustomSubnets:
-      web:
+      Web:
         net_type: public
         priority: 0
       App:
         net_type: private
-        gateway_subnet: Public
+        gateway_subnet: Web
         priority: 1
       DB:
         net_type: private
-        gateway_subnet: Public
+        gateway_subnet: Web
         priority: 2
 
 """

@@ -65,7 +65,7 @@ class BaseTemplate(object):
     __metaclass__ = abc.ABCMeta
     VARSPEC = {}
 
-    def __init__(self, user_data=None):
+    def __init__(self, user_data=dict()):
         self.template = Template()
         self.user_data = user_data
         self.var_spec = [VarSpec(var_name, **attributes)
