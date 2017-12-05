@@ -13,13 +13,6 @@ from troposphere import (
     ec2,
 )
 from troposphere.iam import Policy as TropoPolicy
-from awacs.aws import (
-    Statement,
-    Policy,
-)
-import awacs
-import awacs.logs
-
 from sceptremods.templates import BaseTemplate
 from sceptremods.util.policies import (
     flowlogs_assumerole_policy,
@@ -36,7 +29,7 @@ CLOUDWATCH_ROLE_NAME = "Role"
 FLOW_LOG_GROUP_NAME = "LogGroup"
 FLOW_LOG_STREAM_NAME = "LogStream"
 LOG_RETENTION_VALUES = [
-    0, 1, 3, 5, 7, 14, 30, 60, 90, 120, 150,
+    1, 3, 5, 7, 14, 30, 60, 90, 120, 150,
     180, 365, 400, 545, 731, 1827, 3653
 ]
 
@@ -73,8 +66,7 @@ class FlowLogs(BaseTemplate):
             "type": int,
             "description": "Time in days to retain Cloudwatch Logs. Accepted "
                            "values: {}.".format(str(LOG_RETENTION_VALUES)),
-            #"default": 0,
-            "default": 1,
+            "default": 365,
             "validator": validate_cloudwatch_log_retention,
         },
         "VpcId": {

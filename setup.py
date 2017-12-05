@@ -32,7 +32,7 @@ setup(
         'PyYAML',
         'sceptre',
         'troposphere',
-        'awacs'
+        'awacs',
     ],
     packages=find_packages(exclude=['TODO.txt']),
     include_package_data=True,
@@ -41,6 +41,9 @@ setup(
             'sceptremods=sceptremods.cli:main',
         ],
     },
+    tests_require = [
+        'pytest',
+    ],
 
 )
 

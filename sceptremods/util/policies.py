@@ -7,14 +7,18 @@ from awacs.aws import (
     Principal,
     Statement,
 )
-
+from awacs import (
+    sts,
+    s3,
+    logs,
+    ec2,
+)
 from troposphere import (
     Join,
     Region,
     AccountId,
 )
 
-from awacs import sts, s3, logs, ec2
 
 
 def make_simple_assume_statement(*principals):
@@ -164,16 +168,16 @@ def vpc_flow_log_cloudwatch_policy(log_group_arn):
             Statement(
                 Effect="Allow",
                 Action=[
-                    awacs.logs.DescribeLogGroups
+                    logs.DescribeLogGroups
                 ],
                 Resource=["*"],
             ),
             Statement(
                 Effect="Allow",
                 Action=[
-                    awacs.logs.CreateLogStream,
-                    awacs.logs.DescribeLogStreams,
-                    awacs.logs.PutLogEvents,
+                    logs.CreateLogStream,
+                    logs.DescribeLogStreams,
+                    logs.PutLogEvents,
                 ],
                 Resource=[
                     log_group_arn,

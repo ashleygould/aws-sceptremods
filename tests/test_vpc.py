@@ -2,8 +2,8 @@ import unittest
 import yaml
 
 import sceptremods
-from sceptremods.templates.vpc import VPC
 from sceptremods.util.testutil import TemplateTestCase
+from sceptremods.templates.vpc import VPC
 
 
 custom_user_data = """
