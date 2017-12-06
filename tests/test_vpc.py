@@ -1,10 +1,10 @@
 import pytest
 import yaml
 
-import sceptremods
-from sceptremods.util.testutil import assert_rendered_template
-from sceptremods.templates.vpc import VPC
-
+from sceptremods.util.testutil import (
+    assert_rendered_template,
+    generate_template_fixture,
+)
 
 custom_user_data = """
 VpcCIDR: 10.128.0.0/16
@@ -27,18 +27,14 @@ CustomSubnets:
     priority: 2
 """
 
-def test_default_vpc(gen_fixture=False):
-    t = VPC(dict())
-    t.create_template()
-    assert_rendered_template(t, 'default_vpc', gen_fixture)
+def test_default_vpc():
+    assert_rendered_template('vpc', 'default_vpc', dict())
 
-def test_custom_vpc(gen_fixture=False):
-    t = VPC(yaml.load(custom_user_data))
-    t.create_template()
-    assert_rendered_template(t, 'custom_vpc', gen_fixture)
+def test_custom_vpc():
+    assert_rendered_template('vpc', 'custom_vpc', yaml.load(custom_user_data))
 
 if __name__ == '__main__':
-    test_default_vpc(True)
-    test_custom_vpc(True)
+    generate_template_fixture('vpc', 'default_vpc', dict())
+    generate_template_fixture('vpc', 'custom_vpc', yaml.load(custom_user_data))
 
 
