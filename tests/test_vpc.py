@@ -1,8 +1,8 @@
-import unittest
+import pytest
 import yaml
 
 import sceptremods
-from sceptremods.util.testutil import TemplateTestCase
+from sceptremods.util.testutil import assert_rendered_template
 from sceptremods.templates.vpc import VPC
 
 
@@ -27,23 +27,18 @@ CustomSubnets:
     priority: 2
 """
 
+def test_default_vpc(gen_fixture=False):
+    t = VPC(dict())
+    t.create_template()
+    assert_rendered_template(t, 'default_vpc', gen_fixture)
 
-class TestVpcTemplate(TemplateTestCase):
-
-    def test_default_vpc(self):
-        vpc = VPC()
-        vpc.create_template()
-        self.assertRenderedTemplate(vpc, 'default_vpc')
-
-    def test_custom_vpc(self):
-        user_data = yaml.load(custom_user_data)
-        vpc = VPC(user_data)
-        vpc.create_template()
-        self.assertRenderedTemplate(vpc, 'custom_vpc')
-
+def test_custom_vpc(gen_fixture=False):
+    t = VPC(yaml.load(custom_user_data))
+    t.create_template()
+    assert_rendered_template(t, 'custom_vpc', gen_fixture)
 
 if __name__ == '__main__':
-    unittest.main()
-
+    test_default_vpc(True)
+    test_custom_vpc(True)
 
 

@@ -1,8 +1,8 @@
-import unittest
+import pytest
 import yaml
 
 import sceptremods
-from sceptremods.util.testutil import TemplateTestCase
+from sceptremods.util.testutil import assert_rendered_template
 from sceptremods.templates.vpc_flowlogs import FlowLogs
 
 
@@ -15,23 +15,16 @@ Tags:
   tag2: value2
 """
 
+def test_default_vpc_flowlogs(gen_fixture=False):
+    t = FlowLogs(dict())
+    t.create_template()
+    assert_rendered_template(t, 'default_vpc_flowlogs', gen_fixture)
 
-class TestVpcFlowLogsTemplate(TemplateTestCase):
-
-    def test_default_vpc_flowlogs(self):
-        vpc_flowlogs = FlowLogs()
-        vpc_flowlogs.create_template()
-        self.assertRenderedTemplate(vpc_flowlogs, 'default_vpc_flowlogs')
-
-    def test_custom_vpc(self):
-        user_data = yaml.load(custom_user_data)
-        vpc_flowlogs = FlowLogs(user_data)
-        vpc_flowlogs.create_template()
-        self.assertRenderedTemplate(vpc_flowlogs, 'custom_vpc_flowlogs')
-
+def test_custom_vpc_flowlogs(gen_fixture=False):
+    t = FlowLogs(yaml.load(custom_user_data))
+    t.create_template()
+    assert_rendered_template(t, 'custom_vpc_flowlogs', gen_fixture)
 
 if __name__ == '__main__':
-    unittest.main()
-
-
-
+    test_default_vpc_flowlogs(True)
+    test_custom_vpc_flowlogs(True)

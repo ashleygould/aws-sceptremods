@@ -35,7 +35,7 @@
     "Resources": {
         "LogGroup": {
             "Properties": {
-                "RetentionInDays": 1
+                "RetentionInDays": 365
             },
             "Type": "AWS::Logs::LogGroup"
         },

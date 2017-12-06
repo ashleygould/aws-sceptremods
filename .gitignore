@@ -2,3 +2,5 @@
 *.vpc
 __pycache__
 *.egg-info
+*-gen_fixture
+.cache/
