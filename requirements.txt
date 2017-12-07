@@ -1,0 +1,6 @@
+botocore 
+docopt
+PyYAML
+sceptre
+troposphere
+awacs
