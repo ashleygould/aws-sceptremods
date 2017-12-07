@@ -1,20 +1,27 @@
-"""aws-sceptremods setup"""
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 
-from os import path
+import os
+import io
 from setuptools import setup, find_packages
-#from sceptremods import __version__
 
-here = path.abspath(path.dirname(__file__))
-with open(path.join(here, 'README.rst')) as f:
-    long_description = f.read()
+here = os.path.abspath(os.path.dirname(__file__))
+with io.open(os.path.join(here, 'README.rst'), encoding='utf-8') as f:
+    long_description = '\n' + f.read()
+
+# Load the package's __init__.py module as a dictionary.
+about = {}
+with open(os.path.join(here, 'src/sceptremods/__init__.py')) as f:
+    exec(f.read(), about)
 
 setup(
     name='aws-sceptremods',
-    version='0.0.3',
-    #version=__version__,
+    version=about['__version__'],
+    #version='0.0.3',
     description='Collection of troposphere template modules for use with sceptre',
     long_description=long_description,
     url='https://github.com/ashleygould/aws-sceptremods',
+    keywords='aws sceptre troposphere cloudformation',
     author='Ashley Gould',
     author_email='agould@ucop.edu',
     license='MIT',
@@ -26,7 +33,6 @@ setup(
         'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3.6',
     ],
-    keywords='aws sceptre troposphere cloudformation',
     install_requires=[
         'botocore',
         'docopt',
@@ -35,7 +41,15 @@ setup(
         'troposphere',
         'awacs',
     ],
-    packages=find_packages('src', exclude=['tests', 'examples', 'TODO.txt']),
+    packages=find_packages(
+        'src',
+        exclude=[
+            'tests',
+            'examples',
+            'TODO.txt',
+            'RELEASE.rst'
+        ],
+    ),
     package_dir={'': 'src'},
     include_package_data=True,
     zip_safe=False,
