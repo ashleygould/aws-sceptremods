@@ -90,10 +90,10 @@ class BaseTemplate(object):
 
         print('\nSceptremods Version: {}\n'.format(self.version()))
         print('Module: {}'.format(module_name))
-        if getdoc(module): print(getdoc(module), '\n')
+        if getdoc(module): print('{}/n'.format(getdoc(module)))
 
         print('Class: {}'.format('.'.join([module_name, class_name])))
-        if getdoc(self): print(getdoc(self), '\n')
+        if getdoc(self): print('{}/n'.format(getdoc(self)))
         print("Specification of spectre_user_data variables:\n")
         for spec in self.var_spec:
             spec.describe()
