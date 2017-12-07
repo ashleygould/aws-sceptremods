@@ -2,7 +2,7 @@
 
 from os import path
 from setuptools import setup, find_packages
-from sceptremods import __version__
+#from sceptremods import __version__
 
 here = path.abspath(path.dirname(__file__))
 with open(path.join(here, 'README.rst')) as f:
@@ -10,7 +10,8 @@ with open(path.join(here, 'README.rst')) as f:
 
 setup(
     name='aws-sceptremods',
-    version=__version__,
+    version='0.0.3',
+    #version=__version__,
     description='Collection of troposphere template modules for use with sceptre',
     long_description=long_description,
     url='https://github.com/ashleygould/aws-sceptremods',
@@ -34,8 +35,10 @@ setup(
         'troposphere',
         'awacs',
     ],
-    packages=find_packages(exclude=['TODO.txt']),
+    packages=find_packages('src', exclude=['tests', 'examples', 'TODO.txt']),
+    package_dir={'': 'src'},
     include_package_data=True,
+    zip_safe=False,
     entry_points={
         'console_scripts': [
             'sceptremods=sceptremods.cli:main',
@@ -44,6 +47,5 @@ setup(
     tests_require = [
         'pytest',
     ],
-
 )
 

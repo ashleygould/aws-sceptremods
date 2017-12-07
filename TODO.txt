@@ -1,31 +1,32 @@
 Mon Nov 27 16:10:27 PST 2017
 
-write README
+DONE write README
 DONE create base class for template modules
-add doc strings to new classes in sceptremods.templates
+DONE add doc strings to new classes in sceptremods.templates
 add logger object to BaseTemplate
+DONE add templete for vpc_flowlogs
+  DONE add doc strings
+add linting of python code (fleck8?)
+automate testing (not a clue)
+
 write test scripts for:
   template
-    vpc.py
-    vpc_flowlogs.py
+    DONE vpc.py
+    DONE vpc_flowlogs.py
   custom hook
     route53
   custom resolver
     package_version
-DONE add templete for vpc_flowlogs
-  INPROGRESS add doc strings
-add linting of python code (fleck8?)
-automate testing (not a clue)
+  cli
 
 
 
 
 
 ISSUES:
-how can I get BaseTemplate.help() to display module name when module is run directly?
-
+RESOLVED how can I get BaseTemplate.help() to display module name when module is run directly?  
 
 CONSIDER:
-consider merging ArgSpec class back into BaseTemplate
-make a single template wrapper that takes a template module name as param?
+DONE consider merging ArgSpec class back into BaseTemplate
+NOT HAPPENING make a single template wrapper that takes a template module name as param?
 

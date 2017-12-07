@@ -1,7 +1,7 @@
 import pytest
 import yaml
 
-from sceptremods.util.testutil import (
+from testutil import (
     assert_rendered_template,
     generate_template_fixture,
 )

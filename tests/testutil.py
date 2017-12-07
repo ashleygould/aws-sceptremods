@@ -3,7 +3,7 @@ import json
 import difflib
 import importlib
 import inspect
-from pkg_resources import Requirement, resource_filename
+from pkg_resources import resource_filename
 
 import sceptremods
 from sceptremods.templates import BaseTemplate
@@ -20,8 +20,7 @@ def as_text(source):
 
 def get_template_fixture(fixture_name):
     """Returns  path to the template fixture file."""
-    fixtures_dir = resource_filename(Requirement.parse('aws-sceptremods'),
-            'tests/fixtures/templates')
+    fixtures_dir = resource_filename(__name__, 'fixtures/templates')
     fixture_file = os.path.join(fixtures_dir, fixture_name + '.json')
     return fixture_file
 
