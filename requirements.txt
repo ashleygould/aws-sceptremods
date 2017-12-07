@@ -4,3 +4,4 @@ PyYAML
 sceptre
 troposphere
 awacs
+pytest

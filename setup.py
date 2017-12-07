@@ -58,8 +58,5 @@ setup(
             'sceptremods=sceptremods.cli:main',
         ],
     },
-    tests_require = [
-        'pytest',
-    ],
 )
 
