@@ -1,3 +1,11 @@
+Release 0.0.4 - Thu Dec  7 12:09:14 PST 2017
+ - tweek setup.py,  add .travis.yml
+ - reorganize project dir.  move packages under src/
+ - rework testutils and template tests
+ - convert all tests to pytest instead of unittest
+ - add tests for vpc_flowlogs.py
+ - add testing code: so far only tests vpc.py template.
+
 Release 0.0.3 - Mon Dec  4 14:20:31 PST 2017
  - complete sceptremods.cli
  - add scripts.sceptrmods
