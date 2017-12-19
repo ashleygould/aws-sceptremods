@@ -1,3 +1,10 @@
+Release 0.0.5 - Tue Dec 19 14:21:36 PST 2017
+ - add template.cloudfront_s3_website; add util.acm
+ - sceptremods.template.VarSpec: format descriptions using textwrap
+ - validate python 2.7 support
+ - travis working for python 3.6. added 2.7
+ - debuging travis config
+
 Release 0.0.4 - Thu Dec  7 12:09:14 PST 2017
  - tweek setup.py,  add .travis.yml
  - reorganize project dir.  move packages under src/

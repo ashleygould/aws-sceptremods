@@ -10,7 +10,7 @@ Preparing for the release
  - Update CHANGELOG.rst with changes made since last release:
     `git log --pretty=format:"%s" | tail -100 | sed "s/^/- /"`
  - add changed files:
-    `git add src/sceptremods/__init__.py CHANGELOG.md`
+    `git add src/sceptremods/__init__.py CHANGELOG.rst`
  - Commit changes:
     `git commit -m "Release 1.1.1"`
  - Create tag:
