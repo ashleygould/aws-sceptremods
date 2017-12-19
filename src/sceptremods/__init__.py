@@ -8,4 +8,5 @@ __version__ = '0.0.4'
 MODULES = [
     'vpc',
     'vpc_flowlogs',
+    'cloudfront_s3_website',
 ]

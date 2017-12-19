@@ -63,6 +63,7 @@ def generate_template_fixture(module_name, fixture_name, user_data):
     t.create_template()
     rendered_dict = t.template.to_dict()
     fixture_file = get_template_fixture(fixture_name)
+    print('writing template fixture file {}'.format(fixture_file))
     with open(fixture_file + "-gen_fixture", "w") as fd:
         fd.write(as_text(rendered_dict) + '\n')
 

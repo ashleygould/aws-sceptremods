@@ -10,3 +10,8 @@ from sceptremods.resolvers.package_version import PackageVersion
 class PackageVersion(PackageVersion):
     """Wrapper class for sceptremods.resolvers.package_version.PackageVersion"""
     pass
+
+from sceptremods.resolvers.certificate_arn import CertificateArn
+class CertificateArn(CertificateArn):
+    """Wrapper class for sceptremods.resolvers.certificate_arn.CertificateArn"""
+    pass

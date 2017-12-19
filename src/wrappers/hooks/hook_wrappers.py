@@ -10,3 +10,13 @@ from sceptremods.hooks.route53 import Route53HostedZone
 class Route53HostedZone(Route53HostedZone):
     """Wrapper class for sceptremods.hooks.route53.Route53HostedZone"""
     pass
+
+from sceptremods.hooks.acm_certificate import AcmCertificate
+class AcmCertificate(AcmCertificate):
+    """Wrapper class for sceptremods.hooks.acm_certificate.AcmCertificate"""
+    pass
+
+from sceptremods.hooks.account_verifier import AccountVerifier
+class AccountVerifier(AccountVerifier):
+    """Wrapper class for sceptremods.hooks.account_verifier.AccountVerifier"""
+    pass
