@@ -84,8 +84,7 @@ class FlowLogs(BaseTemplate):
         'Tags': {
             'type': dict,
             'default': dict(),
-            'description': (
-    """Dictionary of tags to apply to stack resources (e.g. {tagname: value})"""),
+            'description': "Dictionary of tags to apply to stack resources (e.g. {tagname: value})",
         },
     }
 

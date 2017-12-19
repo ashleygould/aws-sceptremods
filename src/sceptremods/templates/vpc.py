@@ -128,33 +128,33 @@ class VPC(BaseTemplate):
         'VpcCIDR': {
             'type': str,
             'default': '10.10.0.0/16',
-            'description': (
-    """Cidr block for the VPC.  Must define a class B network (i.e. '/16')."""),
+            'description': "Cidr block for the VPC.  Must define a class B network (i.e. '/16').",
             'validator': validate_cidrblock,
         },
         'AZCount': {
             'type': int,
             'default': 2,
-            'description': (
-    """Number of Availability Zones to use.  Must be an integer less than 10."""),
+            'description': "Number of Availability Zones to use.  Must be an integer less than 10.",
             'validator': validate_az_count,
         },
         'UseDefaultSubnets': {
             'type': bool,
             'default': True,
-            'description': (
-    """Whether or not to create the default 'Public' and 'Private' subnets."""),
+            'description': "Whether or not to create the default 'Public' and 'Private' subnets.",
         },
         'CustomSubnets': {
             'type': dict,
             'default': dict(),
             'description': (
-    """Dictionary of custom subnets to create in addition to or instead of the
-      default 'Public' and 'Private' subnets.  Each custom subnet is a dictionary
-      with the following keys:
+  """Dictionary of custom subnets to create in addition to or instead of the
+  default 'Public' and 'Private' subnets.  Each custom subnet is a dictionary
+  with the following keys:
+
         'net_type' - either 'public' or 'private',
+
         'priority' - integer used to determine the subnet cidr block.  Must
                      be unique among all subnets.
+
         'gateway_subnet' - the public subnet to use as a default route.
                            Required for subnets of net_type 'private'."""),
             'validator': validate_custom_subnets,
@@ -162,8 +162,7 @@ class VPC(BaseTemplate):
         'Tags': {
             'type': dict,
             'default': dict(),
-            'description': (
-    """Dictionary of tags to apply to stack resources (e.g. {tagname: value})"""),
+            'description': "Dictionary of tags to apply to stack resources (e.g. {tagname: value})",
         },
     }
 

@@ -10,6 +10,7 @@ import sys
 import types
 import abc
 from inspect import getmodule, getmodulename, getdoc
+import textwrap
 
 from troposphere import Template
 import sceptremods
@@ -26,8 +27,17 @@ class VarSpec(object):
         self.validator = validator
 
     def describe(self):
+        """
+        Formats text output of help message for this VarSpec object.
+        Does word wrap single line descriptions.  Multi-line descriptions 
+        print as is.  This allows for custom formatting in descriptions.
+        """
+        tw = textwrap.TextWrapper(subsequent_indent="  ")
+        if len(self.description.split('\n')) == 1:
+            self.description = tw.fill(self.description)
         print("{}\n  {}\n  Default: {}\n".format(
-                self.name, self.description, self.default))
+            self.name, self.description, self.default)
+        )
 
     def validate(self, user_data):
         if self.name in user_data:
@@ -90,10 +100,10 @@ class BaseTemplate(object):
 
         print('\nSceptremods Version: {}\n'.format(self.version()))
         print('Module: {}'.format(module_name))
-        if getdoc(module): print('{}/n'.format(getdoc(module)))
+        if getdoc(module): print('{}\n'.format(getdoc(module)))
 
         print('Class: {}'.format('.'.join([module_name, class_name])))
-        if getdoc(self): print('{}/n'.format(getdoc(self)))
+        if getdoc(self): print('{}\n\n'.format(getdoc(self)))
         print("Specification of spectre_user_data variables:\n")
         for spec in self.var_spec:
             spec.describe()
