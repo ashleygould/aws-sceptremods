@@ -3,8 +3,9 @@ import re
 import time
 import boto3
 
+DEFAULT_REGION = 'us-east-1'
 
-def get_cert_arn(cert_fqdn, region):
+def get_cert_arn(cert_fqdn, region=DEFAULT_REGION):
     """
     Return the ACM Certificate ARN for 'cert_fqdn'.
     """
@@ -27,7 +28,7 @@ def get_cert_arn(cert_fqdn, region):
     return arn_list[0]
 
 
-def get_cert_object(cert_fqdn, region):
+def get_cert_object(cert_fqdn, region=DEFAULT_REGION):
     """
     Return the ACM certificate object for 'cert_fqdn'.
     """
@@ -41,7 +42,7 @@ def get_cert_object(cert_fqdn, region):
         return None
 
 
-def get_hosted_zone_id(domain_name, region):
+def get_hosted_zone_id(domain_name, region=DEFAULT_REGION):
     """
     Return the hosted zoned Id corresponding to 'domain_name'.
     """
@@ -67,7 +68,7 @@ def get_hosted_zone_id(domain_name, region):
     return hosted_zone_ids[0].split("/")[2]
 
 
-def request_cert(cert_fqdn, validation_domain, region):
+def request_cert(cert_fqdn, validation_domain, region=DEFAULT_REGION):
     """
     Create a ACM certificate request.  Determine the certificate
     validation method by checking if the validation_domain matches a
@@ -103,7 +104,8 @@ def request_cert(cert_fqdn, validation_domain, region):
         )
 
 
-def create_validation_record_set(resource_record, validation_domain, region):
+def create_validation_record_set(resource_record, validation_domain,
+        region=DEFAULT_REGION):
     """
     Create route53 record set for ACM certificate validation.
     """
@@ -133,7 +135,7 @@ def create_validation_record_set(resource_record, validation_domain, region):
     )
 
 
-def request_validation(cert, validation_domain, region):
+def request_validation(cert, validation_domain, region=DEFAULT_REGION):
     """
     Resubmit certificate validation request based upon the validation
     options of a certificate (i.e. method is either DNS or EMAIL).

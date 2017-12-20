@@ -5,6 +5,8 @@ from sceptre.exceptions import SceptreException
 from sceptre.exceptions import InvalidHookArgumentSyntaxError
 from sceptremods.util import acm
 
+DEFAULT_REGION = 'us-east-1'
+
 
 class AcmCertificate(Hook):
     """
@@ -22,20 +24,32 @@ class AcmCertificate(Hook):
         When validation method is DNS, create validation record set in
         route53.
 
-        self.argument splits into three strings to supply the required params: 
+        self.argument gets split to supply the required positional parameters: 
 
         :cert_fqdn:         The domain name of the certificate requested.
         :validation_domain: The domain that validates this certificate request.
-        :region:            The AWS region in which to create the certificate.
+        :region:            (optional) AWS region in which to create the 
+                            certificate.  Default: 'us-east-1'
+
+        Example sceptre config usage:
+
+        hooks:
+          before_create:
+            - !acm_certificate ashley-demo.example.com example.com us-west-2
+
 
         """
 
-        if len(self.argument.split()) != 3:
+        if len(self.argument.split()) == 3:
+            cert_fqdn, validation_domain, region = self.argument.split()
+        elif len(self.argument.split()) == 2:
+            cert_fqdn, validation_domain = self.argument.split()
+            region = DEFAULT_REGION
+        else:
             raise InvalidHookArgumentSyntaxError(
-                '{}: hook requires three positional parameters: '
-                'cert_fqdn, validation_domain, region'.format( __name__)
+                '{}: hook requires either two or three positional parameters: '
+                'cert_fqdn validation_domain [region]'.format( __name__)
             )
-        cert_fqdn, validation_domain, region = self.argument.split()
 
         cert = acm.get_cert_object(cert_fqdn, region)
         if not cert:
