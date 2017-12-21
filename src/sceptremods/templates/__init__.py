@@ -80,6 +80,7 @@ class BaseTemplate(object):
         self.user_data = user_data
         self.var_spec = [VarSpec(var_name, **attributes)
                 for var_name, attributes in self.VARSPEC.items()]
+        self.template.add_version('2010-09-09')
 
     def validate_user_data(self):
         for var in self.user_data.keys():
