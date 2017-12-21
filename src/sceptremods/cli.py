@@ -103,7 +103,7 @@ def main():
         print('sceptremods modules: \n{}'.format('\n'.join(sceptremods.MODULES)))
 
     if args['--init']:
-        initialize_project('sceptre-project-' + args['--init'], args['--region'])
+        initialize_project('sceptre-' + args['--init'], args['--region'])
 
     if args['--module']:
         module_name = args['--module']
