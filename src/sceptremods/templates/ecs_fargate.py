@@ -9,7 +9,10 @@ from troposphere import (
 )
 from troposphere import (
     ecs,
+    ec2,
 )
+import troposphere.elasticloadbalancingv2 as elb
+
 from sceptremods.templates import BaseTemplate
 
 
@@ -19,10 +22,21 @@ from sceptremods.templates import BaseTemplate
 class ECSFargate(BaseTemplate):
 
     VARSPEC = {
-        'Subnets': {
+        'VpcId': {
+            'type': str,
+            'description': 'ID of the VPC to use for ecs service.',
+            #'default': 'bogus-VpcId-for-testing-only',
+        },
+        'PublicSubnets': {
             'type': str,
             'default': str(),
-            'description': 'A comma sepatrated list of VPC subnet IDs to use for containers.',
+            'description': 'A comma sepatrated list of VPC public subnet IDs to use for ELB.',
+            #'validator': comma_separated_values,
+        },
+        'PrivateSubnets': {
+            'type': str,
+            'default': str(),
+            'description': 'A comma sepatrated list of VPC private subnet IDs to use for containers.',
             #'validator': comma_separated_values,
         },
         'ClusterName': {
@@ -121,19 +135,104 @@ class ECSFargate(BaseTemplate):
             container_definitions.append(ecs.ContainerDefinition(**d))
         return container_definitions
 
+
     def create_template(self):
         self.vars = self.validate_user_data()
         t = self.template
-        if not self.vars['Subnets']:
-            aws_vpc_configuration = NoValue
-        else:
-            aws_vpc_configuration = ecs.AwsvpcConfiguration(
-                AssignPublicIp='ENABLED',
-                Subnets=[subnet.strip() for subnet in self.vars['Subnets'].split(',')]
-            )
-        if not self.vars['Family']:
-            self.vars['Family'] = NoValue
 
+
+        # Security Groups
+        #
+        alb_security_group = t.add_resource(ec2.SecurityGroup(
+            "ALBSecurityGroup",
+            VpcId=self.vars['VpcId'],
+            GroupDescription='ALB security group to allow inbound traffic from internet',
+            SecurityGroupIngress=[
+                ec2.SecurityGroupRule(
+                    IpProtocol="tcp",
+                    ToPort="80",
+                    FromPort="80",
+                    CidrIp='0.0.0.0/0',
+                ),
+                #ec2.SecurityGroupRule(
+                #    IpProtocol="tcp",
+                #    ToPort="443",
+                #    FromPort="443",
+                #    CidrIp='0.0.0.0/0',
+                #),
+            ],
+        ))
+
+        task_security_group = t.add_resource(ec2.SecurityGroup(
+            "TaskSecurityGroup",
+            VpcId=self.vars['VpcId'],
+            GroupDescription='Task security group to allow inbound traffic ALB security group',
+            SecurityGroupIngress=[
+                ec2.SecurityGroupRule(
+                    IpProtocol="tcp",
+                    ToPort="80",
+                    FromPort="80",
+                    SourceSecurityGroupId=Ref(ALBSecurityGroup),
+                ),
+                #ec2.SecurityGroupRule(
+                #    IpProtocol="tcp",
+                #    ToPort="443",
+                #    FromPort="443",
+                #    SourceSecurityGroupId=Ref(ALBSecurityGroup),
+                #),
+            ],
+        ))
+
+
+
+        # ALB
+        #
+        alb = t.add_resource(elb.LoadBalancer(
+            "ApplicationLoadBalancer",
+            Name=self.vars['Family'] + '-ALB',
+            Type='application',
+            Scheme="internet-facing",
+            SecurityGroups=[Ref(ALBSecurityGroup)],
+            Subnets=[subnet.strip() for subnet in self.vars['PublicSubnets'].split(',')],
+        ))
+    
+        target_group = t.add_resource(elb.TargetGroup(
+            "TargetGroup",
+            HealthCheckIntervalSeconds="30",
+            HealthCheckProtocol="HTTP",
+            HealthCheckTimeoutSeconds="10",
+            HealthyThresholdCount="4",
+            Matcher=elb.Matcher(HttpCode="200"),
+            Name=self.vars['Family'] + '-TargetGroup',
+            Port="80",
+            Protocol="HTTP",
+            TargetType='ip',
+            UnhealthyThresholdCount="3",
+            VpcId=self.vars['VpcId'],
+        ))
+    
+        listener = t.add_resource(elb.Listener(
+            "Listener",
+            Port="80",
+            Protocol="HTTP",
+            LoadBalancerArn=Ref(ApplicationLoadBalancer),
+            DefaultActions=[elb.Action(
+                Type="forward",
+                TargetGroupArn=Ref(TargetGroup)
+            )],
+            #Certificates=[],
+        ))
+
+        t.add_output(Output(
+            "URL",
+            Description="URL of website",
+            Value=Join("", ["http://", GetAtt(ApplicationLoadBalancer, "DNSName")])
+        ))
+
+
+
+        # ECS
+        #
         task_definition = t.add_resource(ecs.TaskDefinition(
             'TaskDefinition',
             RequiresCompatibilities=['FARGATE'],
@@ -141,20 +240,33 @@ class ECSFargate(BaseTemplate):
             Cpu=str(self.vars['Cpu']),
             Memory=str(self.vars['Memory']),
             NetworkMode='awsvpc',
-            ExecutionRoleArn='arn:aws:iam::{}:role/ecsTaskExecutionRole'.format(AccountId),
+            ExecutionRoleArn=Join('', ['arn:aws:iam::', AccountId, ':role/ecsTaskExecutionRole']),
             ContainerDefinitions=self.munge_container_definitions(),
         ))
 
         service = t.add_resource(ecs.Service(
             'FargateService',
+            DependsOn=['Listener'],
             Cluster=self.vars['ClusterName'],
             DesiredCount=self.vars['DesiredCount'],
             TaskDefinition=Ref(task_definition),
             LaunchType='FARGATE',
             NetworkConfiguration=ecs.NetworkConfiguration(
-                AwsvpcConfiguration=aws_vpc_configuration,
-            )
+                AwsvpcConfiguration=ecs.AwsvpcConfiguration(
+                    Subnets=[s.strip() for s in self.vars['PrivateSubnets'].split(',')],
+                    SecurityGroups=[Ref(TaskSecurityGroup)],
+                )
+            ),
+            # TODO: pull this info out of Containers var
+            LoadBalancers=[
+                ecs.LoadBalancer(
+                    ContainerName='simplesamlphp',
+                    ContainerPort='80',
+                    TargetGroupArn=Ref(TargetGroup),
+                ),
+            ],
         ))
+
 
 
 #
@@ -177,4 +289,25 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+
+
+
+#  CloudwatchLogsGroup:
+#    Type: AWS::Logs::LogGroup
+#    Properties:
+#      LogGroupName: !Join ['-', [ECSLogGroup, !Ref 'AWS::StackName']]
+#      RetentionInDays: 14
+#---
+#  taskdefinition:
+#    Type: AWS::ECS::TaskDefinition
+#    Properties:
+#      ContainerDefinitions:
+#        LogConfiguration:
+#          LogDriver: awslogs
+#          Options:
+#            awslogs-group:
+#              Ref: CloudwatchLogsGroup
+#            awslogs-region: !Ref 'AWS::Region'
+#            awslogs-stream-prefix: ecs-demo-app
 
