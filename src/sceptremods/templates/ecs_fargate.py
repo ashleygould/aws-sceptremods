@@ -1,3 +1,13 @@
+"""
+Assumptions:
+    using fargate
+    using ALB
+    only one publicly available container
+    only one port on publicly available container
+    ALB in public subnets
+    ecs service in private subnets
+"""
+
 import sys
 import itertools
 
@@ -78,10 +88,15 @@ class ECSFargate(BaseTemplate):
             'default': list(),
             'description': 'A list of ssl certs',
         },
-        'PublicContainers': {
-            'type': list,
-            'default': list(),
-            'description': "List of container names accessible through the ALB.  These names map to 'Name' attributes in the 'ContainerDefinitions' variable.  If no names are specified, then we use the first item in 'ContainerDefinitions'.",
+        'PublicCidr': {
+            'type': str,
+            'default': '0.0.0.0/0',
+            'description': 'The Cidr address from which clients can access the ALB',
+        },
+        'PublicContainer': {
+            'type': str,
+            'default': str(),
+            'description': "Name of the container accessible through the ALB.  This name maps to a 'Name' attribute in the 'ContainerDefinitions' variable.  If not are specified, then we use the first item in 'ContainerDefinitions'.",
         },
         'ContainerDefinitions': {
             'type': list,
@@ -156,12 +171,6 @@ class ECSFargate(BaseTemplate):
                 d['MountPoints'] = [ecs.MountPoint(**m) for m in d['MountPoints']]
             if 'PortMappings' in d:
                 d['PortMappings'] = [ecs.PortMapping(**m) for m in d['PortMappings']]
-            else:
-                d['PortMappings'] = ecs.PortMapping(
-                    ContainerPort='8080',
-                    HostPort='80',
-                    Protocol='tcp',
-                )
             if 'Ulimit' in d:
                 d['Ulimit'] = [ecs.Ulimit(**m) for m in d['Ulimit']]
             #if 'VolumesFrom' in d:
@@ -171,34 +180,34 @@ class ECSFargate(BaseTemplate):
         return container_definitions
 
 
+    def public_port_map(self):
+        if not self.vars['PublicContainer']:
+            self.vars['PublicContainer'] = self.vars['ContainerDefinitions'][0]['Name']
+        public_port_mappings = [
+            d['PortMappings'] for d in self.vars['ContainerDefinitions']
+            if d['Name'] == self.vars['PublicContainer']
+        ]
+        # flatten list of port mappings
+        public_port_mappings = list(itertools.chain.from_iterable(public_port_mappings))
+        #print(public_port_mappings)
+        return public_port_mappings
+
+
     def create_template(self):
         self.vars = self.validate_user_data()
         t = self.template
-
+        public_port_mappings = self.public_port_map()
 
         # Security Groups
         #
-        if not self.vars['PublicContainers']:
-            self.vars['PublicContainers'].append(
-                self.vars['ContainerDefinitions'][0]['Name']
-            )
-        public_port_mappings = [
-            d['PortMappings'] for d in self.vars['ContainerDefinitions']
-            if d['Name'] in self.vars['PublicContainers']
-        ]
-        public_port_mappings = list(itertools.chain.from_iterable(public_port_mappings))
-        print(public_port_mappings)
-
         alb_ingress_rules = list()
         for mapping in public_port_mappings:
-            print(mapping)
-            port = mapping.get('HostPort', mapping['ContainerPort'])
+            #print(mapping)
             alb_ingress_rules.append(ec2.SecurityGroupRule(
                 IpProtocol=mapping.get('Protocol', 'tcp'),
-                ToPort=port,
-                FromPort=port,
-                # TODO: CidrIp should be a var
-                CidrIp='0.0.0.0/0',
+                ToPort=mapping['ContainerPort'],
+                FromPort=mapping['ContainerPort'],
+                CidrIp=self.vars['PublicCidr'],
             ))
         alb_security_group = t.add_resource(ec2.SecurityGroup(
             "ALBSecurityGroup",
@@ -209,24 +218,24 @@ class ECSFargate(BaseTemplate):
 
         task_ingress_rules = list()
         for mapping in public_port_mappings:
-            container_port = mapping['ContainerPort']
             task_ingress_rules.append(ec2.SecurityGroupRule(
                 IpProtocol=mapping.get('Protocol', 'tcp'),
-                ToPort=container_port,
-                FromPort=container_port,
+                ToPort=mapping['ContainerPort'],
+                FromPort=mapping['ContainerPort'],
                 SourceSecurityGroupId=Ref(alb_security_group),
             ))
         task_security_group = t.add_resource(ec2.SecurityGroup(
-            "taskSecurityGroup",
+            "TaskSecurityGroup",
             VpcId=self.vars['VpcId'],
             GroupDescription='allow inbound traffic from ALB security group',
             SecurityGroupIngress=task_ingress_rules,
         ))
 
 
-
         # ALB
         #
+        # Using the first port mapping for default listener config
+        public_port = public_port_mappings[0]['ContainerPort'] 
         if self.vars['Certificates']:
             protocol = 'HTTPS'
         else:
@@ -249,7 +258,7 @@ class ECSFargate(BaseTemplate):
             HealthyThresholdCount="4",
             Matcher=elb.Matcher(HttpCode="200"),
             Name=self.vars['Family'] + '-TargetGroup',
-            Port="80",
+            Port=public_port,
             Protocol=protocol,
             TargetType='ip',
             UnhealthyThresholdCount="3",
@@ -258,7 +267,7 @@ class ECSFargate(BaseTemplate):
     
         listener = t.add_resource(elb.Listener(
             "Listener",
-            Port="80",
+            Port=public_port,
             Protocol=protocol,
             LoadBalancerArn=Ref(alb),
             DefaultActions=[elb.Action(
@@ -280,6 +289,7 @@ class ECSFargate(BaseTemplate):
             LogGroupName='-'.join(['FargateLogGroup', self.vars['Family']]),
             RetentionInDays=self.vars['LogRetention'],
         ))
+
 
         # ECS
         #
@@ -311,11 +321,10 @@ class ECSFargate(BaseTemplate):
                     SecurityGroups=[Ref(task_security_group)],
                 )
             ),
-            # TODO: pull this info out of Containers var
             LoadBalancers=[
                 ecs.LoadBalancer(
-                    ContainerName='simplesamlphp',
-                    ContainerPort='80',
+                    ContainerName=self.vars['PublicContainer'],
+                    ContainerPort=public_port,
                     TargetGroupArn=Ref(target_group),
                 ),
             ],
