@@ -1,7 +1,10 @@
 import sys
+import itertools
+
 from troposphere import (
     NoValue,
     AccountId,
+    Region,
     GetAtt,
     Join,
     Output,
@@ -10,6 +13,7 @@ from troposphere import (
 from troposphere import (
     ecs,
     ec2,
+    logs,
 )
 import troposphere.elasticloadbalancingv2 as elb
 
@@ -64,16 +68,32 @@ class ECSFargate(BaseTemplate):
             'default': str(),
             'description': 'The name of a family that this task definition is registered to. ',
         },
+        'LogRetention': {
+            'type': int,
+            'default': 14,
+            'description': 'Number of days to retain cloudwatch logs',
+        },
+        'Certificates': {
+            'type': list,
+            'default': list(),
+            'description': 'A list of ssl certs',
+        },
+        'PublicContainers': {
+            'type': list,
+            'default': list(),
+            'description': "List of container names accessible through the ALB.  These names map to 'Name' attributes in the 'ContainerDefinitions' variable.  If no names are specified, then we use the first item in 'ContainerDefinitions'.",
+        },
         'ContainerDefinitions': {
             'type': list,
-            'default': [
-                dict(
-                    Name='nginx',
-                    Image='nginx',
-                    PortMappings=[dict(ContainerPort=80), dict(ContainerPort=443)],
-                    Environment=[dict(Name='BleeKey', Value='Blee')],
-                ),
-            ],
+            'default': [dict(
+                Name='nginx',
+                Image='nginx',
+                PortMappings=[dict(
+                    ContainerPort=8080,
+                    HostPort=80,
+                    Protocol='tcp'
+                )],
+            )],
             'description': (
   """List of container definitions each of which is a dictionary with the
   following keys:
@@ -123,10 +143,25 @@ class ECSFargate(BaseTemplate):
             #    d['LinuxParameters'] = [ecs.LinuxParameters(**m) for m in d['LinuxParameters']]
             if 'LogConfiguration' in d:
                 d['LogConfiguration'] = [ecs.LogConfiguration(**m) for m in d['LogConfiguration']]
+            else:
+                d['LogConfiguration'] =  ecs.LogConfiguration(
+                    LogDriver='awslogs',
+                    Options={
+                        'awslogs-group': Ref(self.log_group),
+                        'awslogs-region': Region,
+                        'awslogs-stream-prefix': d['Name'],
+                    },
+                )
             if 'MountPoints' in d:
                 d['MountPoints'] = [ecs.MountPoint(**m) for m in d['MountPoints']]
             if 'PortMappings' in d:
                 d['PortMappings'] = [ecs.PortMapping(**m) for m in d['PortMappings']]
+            else:
+                d['PortMappings'] = ecs.PortMapping(
+                    ContainerPort='8080',
+                    HostPort='80',
+                    Protocol='tcp',
+                )
             if 'Ulimit' in d:
                 d['Ulimit'] = [ecs.Ulimit(**m) for m in d['Ulimit']]
             #if 'VolumesFrom' in d:
@@ -143,69 +178,79 @@ class ECSFargate(BaseTemplate):
 
         # Security Groups
         #
+        if not self.vars['PublicContainers']:
+            self.vars['PublicContainers'].append(
+                self.vars['ContainerDefinitions'][0]['Name']
+            )
+        public_port_mappings = [
+            d['PortMappings'] for d in self.vars['ContainerDefinitions']
+            if d['Name'] in self.vars['PublicContainers']
+        ]
+        public_port_mappings = list(itertools.chain.from_iterable(public_port_mappings))
+        print(public_port_mappings)
+
+        alb_ingress_rules = list()
+        for mapping in public_port_mappings:
+            print(mapping)
+            port = mapping.get('HostPort', mapping['ContainerPort'])
+            alb_ingress_rules.append(ec2.SecurityGroupRule(
+                IpProtocol=mapping.get('Protocol', 'tcp'),
+                ToPort=port,
+                FromPort=port,
+                # TODO: CidrIp should be a var
+                CidrIp='0.0.0.0/0',
+            ))
         alb_security_group = t.add_resource(ec2.SecurityGroup(
             "ALBSecurityGroup",
             VpcId=self.vars['VpcId'],
-            GroupDescription='ALB security group to allow inbound traffic from internet',
-            SecurityGroupIngress=[
-                ec2.SecurityGroupRule(
-                    IpProtocol="tcp",
-                    ToPort="80",
-                    FromPort="80",
-                    CidrIp='0.0.0.0/0',
-                ),
-                #ec2.SecurityGroupRule(
-                #    IpProtocol="tcp",
-                #    ToPort="443",
-                #    FromPort="443",
-                #    CidrIp='0.0.0.0/0',
-                #),
-            ],
+            GroupDescription='allow inbound traffic from internet',
+            SecurityGroupIngress=alb_ingress_rules,
         ))
 
+        task_ingress_rules = list()
+        for mapping in public_port_mappings:
+            container_port = mapping['ContainerPort']
+            task_ingress_rules.append(ec2.SecurityGroupRule(
+                IpProtocol=mapping.get('Protocol', 'tcp'),
+                ToPort=container_port,
+                FromPort=container_port,
+                SourceSecurityGroupId=Ref(alb_security_group),
+            ))
         task_security_group = t.add_resource(ec2.SecurityGroup(
-            "TaskSecurityGroup",
+            "taskSecurityGroup",
             VpcId=self.vars['VpcId'],
-            GroupDescription='Task security group to allow inbound traffic ALB security group',
-            SecurityGroupIngress=[
-                ec2.SecurityGroupRule(
-                    IpProtocol="tcp",
-                    ToPort="80",
-                    FromPort="80",
-                    SourceSecurityGroupId=Ref(ALBSecurityGroup),
-                ),
-                #ec2.SecurityGroupRule(
-                #    IpProtocol="tcp",
-                #    ToPort="443",
-                #    FromPort="443",
-                #    SourceSecurityGroupId=Ref(ALBSecurityGroup),
-                #),
-            ],
+            GroupDescription='allow inbound traffic from ALB security group',
+            SecurityGroupIngress=task_ingress_rules,
         ))
 
 
 
         # ALB
         #
+        if self.vars['Certificates']:
+            protocol = 'HTTPS'
+        else:
+            protocol = 'HTTP'
+
         alb = t.add_resource(elb.LoadBalancer(
             "ApplicationLoadBalancer",
             Name=self.vars['Family'] + '-ALB',
             Type='application',
             Scheme="internet-facing",
-            SecurityGroups=[Ref(ALBSecurityGroup)],
+            SecurityGroups=[Ref(alb_security_group)],
             Subnets=[subnet.strip() for subnet in self.vars['PublicSubnets'].split(',')],
         ))
     
         target_group = t.add_resource(elb.TargetGroup(
             "TargetGroup",
             HealthCheckIntervalSeconds="30",
-            HealthCheckProtocol="HTTP",
+            HealthCheckProtocol=protocol,
             HealthCheckTimeoutSeconds="10",
             HealthyThresholdCount="4",
             Matcher=elb.Matcher(HttpCode="200"),
             Name=self.vars['Family'] + '-TargetGroup',
             Port="80",
-            Protocol="HTTP",
+            Protocol=protocol,
             TargetType='ip',
             UnhealthyThresholdCount="3",
             VpcId=self.vars['VpcId'],
@@ -214,11 +259,11 @@ class ECSFargate(BaseTemplate):
         listener = t.add_resource(elb.Listener(
             "Listener",
             Port="80",
-            Protocol="HTTP",
-            LoadBalancerArn=Ref(ApplicationLoadBalancer),
+            Protocol=protocol,
+            LoadBalancerArn=Ref(alb),
             DefaultActions=[elb.Action(
                 Type="forward",
-                TargetGroupArn=Ref(TargetGroup)
+                TargetGroupArn=Ref(target_group)
             )],
             #Certificates=[],
         ))
@@ -226,10 +271,15 @@ class ECSFargate(BaseTemplate):
         t.add_output(Output(
             "URL",
             Description="URL of website",
-            Value=Join("", ["http://", GetAtt(ApplicationLoadBalancer, "DNSName")])
+            Value=Join("", ["http://", GetAtt(alb, "DNSName")])
         ))
 
-
+        # CloudWatch
+        self.log_group = t.add_resource(logs.LogGroup(
+            'FargateLogGroup',
+            LogGroupName='-'.join(['FargateLogGroup', self.vars['Family']]),
+            RetentionInDays=self.vars['LogRetention'],
+        ))
 
         # ECS
         #
@@ -240,7 +290,11 @@ class ECSFargate(BaseTemplate):
             Cpu=str(self.vars['Cpu']),
             Memory=str(self.vars['Memory']),
             NetworkMode='awsvpc',
-            ExecutionRoleArn=Join('', ['arn:aws:iam::', AccountId, ':role/ecsTaskExecutionRole']),
+            ExecutionRoleArn=Join('', [
+                'arn:aws:iam::', 
+                AccountId, 
+                ':role/ecsTaskExecutionRole'
+            ]),
             ContainerDefinitions=self.munge_container_definitions(),
         ))
 
@@ -254,7 +308,7 @@ class ECSFargate(BaseTemplate):
             NetworkConfiguration=ecs.NetworkConfiguration(
                 AwsvpcConfiguration=ecs.AwsvpcConfiguration(
                     Subnets=[s.strip() for s in self.vars['PrivateSubnets'].split(',')],
-                    SecurityGroups=[Ref(TaskSecurityGroup)],
+                    SecurityGroups=[Ref(task_security_group)],
                 )
             ),
             # TODO: pull this info out of Containers var
@@ -262,7 +316,7 @@ class ECSFargate(BaseTemplate):
                 ecs.LoadBalancer(
                     ContainerName='simplesamlphp',
                     ContainerPort='80',
-                    TargetGroupArn=Ref(TargetGroup),
+                    TargetGroupArn=Ref(target_group),
                 ),
             ],
         ))
