@@ -69,7 +69,7 @@ class ECSFargate(BaseTemplate):
         'Memory': {
             'type': int,
             'default': 512,
-            'description': 'The amount (in MiB) of memory used by the task.  Must be on of??',
+            'description': 'The amount (in MiB) of memory used by the task.',
         },
         'Family': {
             'type': str,
@@ -93,7 +93,7 @@ class ECSFargate(BaseTemplate):
             'default': 80,
             'description': 'The port number on the ECS container.',
         },
-        'ContainerNetworkProtocol': {
+        'ContainerProtocol': {
             'type': str,
             'default': 'tcp',
             'description': 'The network protocol the ECS container.',
@@ -120,6 +120,11 @@ class ECSFargate(BaseTemplate):
             'default': str(),
             'description': 'ARN of the AWS application loadbalancer to use for this service.',
         },
+        'DefaultListener': {
+            'type': str,
+            'default': str(),
+            'description': 'ARN of the default listener associated with the ALB.',
+        },
         'ListenerPort': {
             'type': int,
             'default': 80,
@@ -127,7 +132,7 @@ class ECSFargate(BaseTemplate):
         },
         'ListenerProtocol': {
             'type': str,
-            'default': 'tcp',
+            'default': 'HTTP',
             'description': 'The network protocol of the ALB Listener.',
         },
         'Certificates': {
@@ -143,7 +148,7 @@ class ECSFargate(BaseTemplate):
         attrs = dict(
             Name=self.vars['ContainerName'],
             Image=self.vars['ContainerImage'],
-            Portmappings=[ecs.PortMapping(
+            PortMappings=[ecs.PortMapping(
                 ContainerPort=self.vars['ContainerPort'],
                 Protocol=self.vars['ContainerProtocol'],
             )],
@@ -174,20 +179,25 @@ class ECSFargate(BaseTemplate):
                 attrs['VolumesFrom'] = [ecs.VolumesFrom(**m) for m in extras['VolumesFrom']]
             # now merge extras into attrs.
 
+        # munge memory
+        if not 'Memory' in attrs and not 'MemoryReservation' in attrs:
+            attrs['MemoryReservation'] = self.vars['Memory']
+
+        print(attrs)
         return attrs
 
 
 
     def create_template(self):
         self.vars = self.validate_user_data()
+        print(self.vars)
         t = self.template
-        public_port_mappings = self.public_port_map()
+        if not self.vars['Family']:
+            self.vars['Family'] = self.vars['ContainerName']
 
 
         # ALB
         #
-        # Using the first port mapping for default listener config
-        public_port = public_port_mappings[0]['ContainerPort'] 
         if self.vars['Certificates']:
             protocol = 'HTTPS'
         else:
@@ -208,23 +218,35 @@ class ECSFargate(BaseTemplate):
             #UnhealthyThresholdCount="3",
         ))
     
-        listener = t.add_resource(elb.Listener(
-            "Listener",
-            Port=self.vars['ListenerPort'],
-            Protocol=self.vars['ListenerProtocol'],
-            LoadBalancerArn=self.vars['LoadBalancerArn'],
-            DefaultActions=[elb.Action(
-                Type="forward",
-                TargetGroupArn=Ref(target_group)
-            )],
-            Certificates=self.vars['Certificates'],
-        ))
 
-        #t.add_output(Output(
-        #    "URL",
-        #    Description="URL of website",
-        #    Value=Join("", ["http://", GetAtt(alb, "DNSName")])
-        #))
+        if self.vars['ListenerPort'] == 80:
+            listener_rule = t.add_resource(elb.ListenerRule(
+                "ListenerRule",
+                ListenerArn=self.vars['DefaultListener'],
+                Priority=1,
+                Actions=[elb.Action(
+                    Type="forward",
+                    TargetGroupArn=Ref(target_group)
+                )],
+                Conditions=[elb.Condition(
+                    Field="path-pattern",
+                    Values=['/'],
+                )],
+            ))
+            service_dep = listener_rule.title
+        else:
+            listener = t.add_resource(elb.Listener(
+                "Listener",
+                Port=self.vars['ListenerPort'],
+                Protocol=self.vars['ListenerProtocol'],
+                LoadBalancerArn=self.vars['LoadBalancerArn'],
+                DefaultActions=[elb.Action(
+                    Type="forward",
+                    TargetGroupArn=Ref(target_group)
+                )],
+                Certificates=self.vars['Certificates'],
+            ))
+            service_dep = listener.title
 
         # CloudWatch
         self.log_group = t.add_resource(logs.LogGroup(
@@ -240,8 +262,8 @@ class ECSFargate(BaseTemplate):
             'TaskDefinition',
             RequiresCompatibilities=['FARGATE'],
             Family=self.vars['Family'],
-            #Cpu=str(self.vars['Cpu']),
-            #Memory=str(self.vars['Memory']),
+            Cpu=str(self.vars['Cpu']),
+            Memory=str(self.vars['Memory']),
             NetworkMode='awsvpc',
             ExecutionRoleArn=Join('', [
                 'arn:aws:iam::', 
@@ -255,7 +277,7 @@ class ECSFargate(BaseTemplate):
 
         service = t.add_resource(ecs.Service(
             'FargateService',
-            DependsOn=['Listener'],
+            DependsOn=service_dep,
             Cluster=self.vars['ClusterName'],
             DesiredCount=self.vars['DesiredCount'],
             TaskDefinition=Ref(task_definition),
