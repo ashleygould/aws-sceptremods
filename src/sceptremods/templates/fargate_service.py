@@ -20,9 +20,11 @@ from troposphere import (
 from troposphere import (
     ecs,
     logs,
+    route53,
 )
 import troposphere.elasticloadbalancingv2 as elb
 
+from sceptremods.util.acm import get_elb_hosted_zone_id
 from sceptremods.templates import BaseTemplate
 
 
@@ -120,6 +122,11 @@ class ECSFargate(BaseTemplate):
             'default': str(),
             'description': 'ARN of the AWS application loadbalancer to use for this service.',
         },
+        'LoadBalancerUrl': {
+            'type': str,
+            'default': str(),
+            'description': 'URL of the ALB.',
+        },
         'DefaultListener': {
             'type': str,
             'default': str(),
@@ -130,22 +137,44 @@ class ECSFargate(BaseTemplate):
             'default': 80,
             'description': 'The network port of the ALB Listener.',
         },
-        'ListenerProtocol': {
-            'type': str,
-            'default': 'HTTP',
-            'description': 'The network protocol of the ALB Listener.',
-        },
         'Certificates': {
             'type': list,
             'default': list(),
             'description': 'A list of ssl certs to attach to the ALB listener for this service.',
         },
+        'HostedZone': {
+            'type': str,
+            'default': str(),
+            'description': 'AWS hosted zone domain name.',
+        },
+        'ServiceUrl': {
+            'type': str,
+            'default': str(),
+            'description': 'The fully qualified DNS name to use for the service.  This becomes a CNAME to the ALB in route53.  Leave blank if you do not require a DNS name for this service.',
+        },
     }
 
 
+    def route53_record_set(self):
+        t = self.template
+        LocalDNS = t.add_resource(route53.RecordSetGroup(
+            "RecordSetGroup",
+            HostedZoneName=self.vars["HostedZone"] + ".",
+            RecordSets=[route53.RecordSet(
+                Name=self.vars['ServiceUrl'] + ".",
+                Type="A",
+                AliasTarget=route53.AliasTarget(
+                    HostedZoneId=get_elb_hosted_zone_id(self.vars['LoadBalancerArn']),
+                    DNSName=self.vars['LoadBalancerUrl'],
+                ),
+            )],
+        ))
+
+
     def munge_container_attributes(self):
+        attributes = dict()
         # collect required attributes
-        attrs = dict(
+        required = dict(
             Name=self.vars['ContainerName'],
             Image=self.vars['ContainerImage'],
             PortMappings=[ecs.PortMapping(
@@ -163,34 +192,39 @@ class ECSFargate(BaseTemplate):
         )
         # deal with additional attributes
         if self.vars['AdditionalContainerAttributes']:
-            extras = self.vars['AdditionalContainerAttributes']
+            added = self.vars['AdditionalContainerAttributes']
             # deal with troposphere AWSProperty objects
-            if 'Environment' in extras:
-                attrs['Environment'] = [ecs.Environment(**m) for m in extras['Environment']]
-            if 'ExtraHosts' in extras:
-                attrs['ExtraHosts'] = [ecs.HostEntry(**m) for m in extras['ExtraHosts']]
-            if 'LinuxParameters' in extras:
-                attrs['LinuxParameters'] = [ecs.LinuxParameters(**m) for m in extras['LinuxParameters']]
-            if 'MountPoints' in extras:
-                attrs['MountPoints'] = [ecs.MountPoint(**m) for m in extras['MountPoints']]
-            if 'Ulimit' in extras:
-                attrs['Ulimit'] = [ecs.Ulimit(**m) for m in extras['Ulimit']]
-            if 'VolumesFrom' in extras:
-                attrs['VolumesFrom'] = [ecs.VolumesFrom(**m) for m in extras['VolumesFrom']]
-            # now merge extras into attrs.
+            if 'Environment' in added:
+                attributes['Environment'] = [ecs.Environment(**m) for m in added['Environment']]
+            if 'ExtraHosts' in added:
+                attributes['ExtraHosts'] = [ecs.HostEntry(**m) for m in added['ExtraHosts']]
+            if 'LinuxParameters' in added:
+                attributes['LinuxParameters'] = [ecs.LinuxParameters(**m) for m in added['LinuxParameters']]
+            if 'MountPoints' in added:
+                attributes['MountPoints'] = [ecs.MountPoint(**m) for m in added['MountPoints']]
+            if 'Ulimit' in added:
+                attributes['Ulimit'] = [ecs.Ulimit(**m) for m in added['Ulimit']]
+            if 'VolumesFrom' in added:
+                attributes['VolumesFrom'] = [ecs.VolumesFrom(**m) for m in added['VolumesFrom']]
+            # munge memory
+            if not 'Memory' in added and not 'MemoryReservation' in added:
+                attributes['MemoryReservation'] = self.vars['Memory']
 
-        # munge memory
-        if not 'Memory' in attrs and not 'MemoryReservation' in attrs:
-            attrs['MemoryReservation'] = self.vars['Memory']
+            # merge the rest of additional attributes
+            attributes.update(added)
 
-        print(attrs)
-        return attrs
+        attributes.update(required)
+        print(attributes)
+        #return attributes
+        return required
+
+
 
 
 
     def create_template(self):
         self.vars = self.validate_user_data()
-        print(self.vars)
+        #print(self.vars)
         t = self.template
         if not self.vars['Family']:
             self.vars['Family'] = self.vars['ContainerName']
@@ -206,7 +240,8 @@ class ECSFargate(BaseTemplate):
         target_group = t.add_resource(elb.TargetGroup(
             "TargetGroup",
             Port=self.vars['ListenerPort'],
-            Protocol=self.vars['ListenerProtocol'],
+            #Protocol=self.vars['ListenerProtocol'],
+            Protocol=protocol,
             TargetType='ip',
             VpcId=self.vars['VpcId'],
             #Name=self.vars['Family'] + '-TargetGroup',
@@ -238,13 +273,16 @@ class ECSFargate(BaseTemplate):
             listener = t.add_resource(elb.Listener(
                 "Listener",
                 Port=self.vars['ListenerPort'],
-                Protocol=self.vars['ListenerProtocol'],
+                Protocol=protocol,
                 LoadBalancerArn=self.vars['LoadBalancerArn'],
                 DefaultActions=[elb.Action(
                     Type="forward",
                     TargetGroupArn=Ref(target_group)
                 )],
-                Certificates=self.vars['Certificates'],
+                Certificates=[
+                    elb.Certificate(CertificateArn=cert_arn)
+                    for cert_arn in self.vars['Certificates']
+                ],
             ))
             service_dep = listener.title
 
@@ -297,6 +335,17 @@ class ECSFargate(BaseTemplate):
             ],
         ))
 
+        if self.vars['ServiceUrl']:
+            self.route53_record_set()
+            service_dns = self.vars['ServiceUrl']
+        else:
+            service_dns = self.vars['LoadBalancerUrl']
+
+        LocalDNS = t.add_output(Output(
+            "ServiceDNS",
+            Description="The DNS domainname of the service",
+            Value=service_dns
+        ))
 
 
 #
