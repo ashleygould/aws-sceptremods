@@ -4,6 +4,7 @@ Assumptions:
     using ALB 
     only one publicly available port
     one service, one task, one container
+    no task volumes
 """
 
 import sys
@@ -34,7 +35,8 @@ from sceptremods.templates import BaseTemplate
 class ECSFargate(BaseTemplate):
 
     VARSPEC = {
-        # service vars
+
+        # ECS service vars
         'VpcId': {
             'type': str,
             #'default': 'bogus-VpcId-for-testing-only',
@@ -76,12 +78,17 @@ class ECSFargate(BaseTemplate):
         'Family': {
             'type': str,
             'default': str(),
-            'description': 'The name of a family that this task definition is registered to.  If not specified, use the container name',
+            'description': 'The name of a family that this task definition is registered to.  If not specified, use the container name.',
         },
         'LogRetention': {
             'type': int,
             'default': 14,
-            'description': 'Number of days to retain cloudwatch logs',
+            'description': 'Number of days to retain cloudwatch logs.',
+        },
+        'TaskRoleArn': {
+            'type': str,
+            'default': str(),
+            'description': 'ARN of an IAM role to accociate with the ECS task.',
         },
 
         # ECS container vars
@@ -105,10 +112,15 @@ class ECSFargate(BaseTemplate):
             'default': str(),
             'description': 'The name of the docker image to use for the ECS container.',
         },
+        'ContainerImageVersion': {
+            'type': str,
+            'default': 'latest',
+            'description': 'The docker image version to use for the ECS container.',
+        },
         'UseECR': {
             'type': bool,
-            'default': True,
-            'description': 'Whether or not the container image repository is in ECR.  When true the template expands the ContainerName var into a ECR path.  This just simplifies variable systax',
+            'default': False,
+            'description': 'Whether or not the container image repository is in ECR.  When "True" the ContainerName var is expanded into a ECR path based on the account id and region.',
         },
         'AdditionalContainerAttributes': {
             'type': dict,
@@ -137,6 +149,11 @@ class ECSFargate(BaseTemplate):
             'default': 80,
             'description': 'The network port of the ALB Listener.',
         },
+        'HealthCheckAttributes': {
+            'type': dict,
+            'default': dict(),
+            'description': 'Dictionary of ELB target group health check attributes.  See Cloudformation Docs on ELB target groups for available attributes and syntax.',
+        },
         'Certificates': {
             'type': list,
             'default': list(),
@@ -147,7 +164,7 @@ class ECSFargate(BaseTemplate):
             'default': str(),
             'description': 'AWS hosted zone domain name.',
         },
-        'ServiceUrl': {
+        'ServiceFqdn': {
             'type': str,
             'default': str(),
             'description': 'The fully qualified DNS name to use for the service.  This becomes a CNAME to the ALB in route53.  Leave blank if you do not require a DNS name for this service.',
@@ -155,28 +172,18 @@ class ECSFargate(BaseTemplate):
     }
 
 
-    def route53_record_set(self):
-        t = self.template
-        LocalDNS = t.add_resource(route53.RecordSetGroup(
-            "RecordSetGroup",
-            HostedZoneName=self.vars["HostedZone"] + ".",
-            RecordSets=[route53.RecordSet(
-                Name=self.vars['ServiceUrl'] + ".",
-                Type="A",
-                AliasTarget=route53.AliasTarget(
-                    HostedZoneId=get_elb_hosted_zone_id(self.vars['LoadBalancerArn']),
-                    DNSName=self.vars['LoadBalancerUrl'],
-                ),
-            )],
-        ))
-
-
     def munge_container_attributes(self):
-        attributes = dict()
-        # collect required attributes
+        image =':'.join([
+            self.vars['ContainerImage'], 
+            self.vars['ContainerImageVersion'],
+        ])
+        # munge ECR image path
+        if self.vars['UseECR']:
+            image = Join('.', [AccountId, 'dkr.ecr', Region, 'amazonaws.com/' + image])
+        # set required attributes
         required = dict(
             Name=self.vars['ContainerName'],
-            Image=self.vars['ContainerImage'],
+            Image=image,
             PortMappings=[ecs.PortMapping(
                 ContainerPort=self.vars['ContainerPort'],
                 Protocol=self.vars['ContainerProtocol'],
@@ -195,107 +202,113 @@ class ECSFargate(BaseTemplate):
             added = self.vars['AdditionalContainerAttributes']
             # deal with troposphere AWSProperty objects
             if 'Environment' in added:
-                attributes['Environment'] = [ecs.Environment(**m) for m in added['Environment']]
+                added['Environment'] = [
+                    ecs.Environment(**m) for m in added['Environment']
+                ]
             if 'ExtraHosts' in added:
-                attributes['ExtraHosts'] = [ecs.HostEntry(**m) for m in added['ExtraHosts']]
+                added['ExtraHosts'] = [
+                    ecs.HostEntry(**m) for m in added['ExtraHosts']
+                ]
             if 'LinuxParameters' in added:
-                attributes['LinuxParameters'] = [ecs.LinuxParameters(**m) for m in added['LinuxParameters']]
+                added['LinuxParameters'] = [
+                    ecs.LinuxParameters(**m) for m in added['LinuxParameters']
+                ]
             if 'MountPoints' in added:
-                attributes['MountPoints'] = [ecs.MountPoint(**m) for m in added['MountPoints']]
+                added['MountPoints'] = [
+                    ecs.MountPoint(**m) for m in added['MountPoints']
+                ]
             if 'Ulimit' in added:
-                attributes['Ulimit'] = [ecs.Ulimit(**m) for m in added['Ulimit']]
+                added['Ulimit'] = [
+                    ecs.Ulimit(**m) for m in added['Ulimit']
+                ]
             if 'VolumesFrom' in added:
-                attributes['VolumesFrom'] = [ecs.VolumesFrom(**m) for m in added['VolumesFrom']]
+                added['VolumesFrom'] = [
+                    ecs.VolumesFrom(**m) for m in added['VolumesFrom']
+                ]
             # munge memory
             if not 'Memory' in added and not 'MemoryReservation' in added:
-                attributes['MemoryReservation'] = self.vars['Memory']
+                added['MemoryReservation'] = self.vars['Memory']
 
-            # merge the rest of additional attributes
-            attributes.update(added)
+            attributes  = added.copy()
+        else:
+            attributes = dict()
 
+        # merge in required attributes.
         attributes.update(required)
-        print(attributes)
-        #return attributes
-        return required
+        return attributes
 
 
-
-
-
-    def create_template(self):
-        self.vars = self.validate_user_data()
-        #print(self.vars)
+    def create_log_group(self):
         t = self.template
-        if not self.vars['Family']:
-            self.vars['Family'] = self.vars['ContainerName']
-
-
-        # ALB
-        #
-        if self.vars['Certificates']:
-            protocol = 'HTTPS'
-        else:
-            protocol = 'HTTP'
-
-        target_group = t.add_resource(elb.TargetGroup(
-            "TargetGroup",
-            Port=self.vars['ListenerPort'],
-            #Protocol=self.vars['ListenerProtocol'],
-            Protocol=protocol,
-            TargetType='ip',
-            VpcId=self.vars['VpcId'],
-            #Name=self.vars['Family'] + '-TargetGroup',
-            #HealthCheckIntervalSeconds="30",
-            #HealthCheckProtocol=protocol,
-            #HealthCheckTimeoutSeconds="10",
-            #HealthyThresholdCount="4",
-            #Matcher=elb.Matcher(HttpCode="200"),
-            #UnhealthyThresholdCount="3",
-        ))
-    
-
-        if self.vars['ListenerPort'] == 80:
-            listener_rule = t.add_resource(elb.ListenerRule(
-                "ListenerRule",
-                ListenerArn=self.vars['DefaultListener'],
-                Priority=1,
-                Actions=[elb.Action(
-                    Type="forward",
-                    TargetGroupArn=Ref(target_group)
-                )],
-                Conditions=[elb.Condition(
-                    Field="path-pattern",
-                    Values=['/'],
-                )],
-            ))
-            service_dep = listener_rule.title
-        else:
-            listener = t.add_resource(elb.Listener(
-                "Listener",
-                Port=self.vars['ListenerPort'],
-                Protocol=protocol,
-                LoadBalancerArn=self.vars['LoadBalancerArn'],
-                DefaultActions=[elb.Action(
-                    Type="forward",
-                    TargetGroupArn=Ref(target_group)
-                )],
-                Certificates=[
-                    elb.Certificate(CertificateArn=cert_arn)
-                    for cert_arn in self.vars['Certificates']
-                ],
-            ))
-            service_dep = listener.title
-
-        # CloudWatch
         self.log_group = t.add_resource(logs.LogGroup(
-            'FargateLogGroup',
+            'LogGroup',
             LogGroupName='-'.join(['FargateLogGroup', self.vars['Family']]),
             RetentionInDays=self.vars['LogRetention'],
         ))
 
 
-        # ECS
-        #
+    def create_target_group(self):
+        t = self.template
+        required_attributes = dict(
+            Name='TG-' + self.vars['ContainerName'],
+            Port=self.vars['ListenerPort'],
+            Protocol=self.protocol,
+            TargetType='ip',
+            VpcId=self.vars['VpcId'],
+        )
+        if self.vars['HealthCheckAttributes']:
+            if 'Matcher' in self.vars['HealthCheckAttributes']:
+                self.vars['HealthCheckAttributes']['Matcher'] = elb.Matcher(
+                    **self.vars['HealthCheckAttributes']['Matcher']
+                )
+            tg_attributes = self.vars['HealthCheckAttributes'].copy()
+        else:
+            tg_attributes = dict()
+        tg_attributes.update(required_attributes)
+        return t.add_resource(elb.TargetGroup("TargetGroup", **tg_attributes))
+
+
+    def create_listener_rule(self):
+        t = self.template
+        listener_rule = t.add_resource(elb.ListenerRule(
+            "ListenerRule",
+            ListenerArn=self.vars['DefaultListener'],
+            Priority=1,
+            Actions=[elb.Action(
+                Type="forward",
+                TargetGroupArn=Ref(self.target_group)
+            )],
+            Conditions=[elb.Condition(
+                Field="path-pattern",
+                Values=['/'],
+            )],
+        ))
+        return listener_rule
+
+            
+    def create_listener(self):
+        t = self.template
+        listener = t.add_resource(elb.Listener(
+            "Listener",
+            Port=self.vars['ListenerPort'],
+            Protocol=self.protocol,
+            LoadBalancerArn=self.vars['LoadBalancerArn'],
+            DefaultActions=[elb.Action(
+                Type="forward",
+                TargetGroupArn=Ref(self.target_group)
+            )],
+            Certificates=[
+                elb.Certificate(CertificateArn=cert_arn)
+                for cert_arn in self.vars['Certificates']
+            ],
+        ))
+        return listener
+
+
+    def create_ecs_task(self):
+        t = self.template
+        if not self.vars['TaskRoleArn']:
+            self.vars['TaskRoleArn'] = NoValue
         task_definition = t.add_resource(ecs.TaskDefinition(
             'TaskDefinition',
             RequiresCompatibilities=['FARGATE'],
@@ -308,17 +321,22 @@ class ECSFargate(BaseTemplate):
                 AccountId, 
                 ':role/ecsTaskExecutionRole'
             ]),
+            TaskRoleArn=self.vars['TaskRoleArn'],
             ContainerDefinitions=[
                 ecs.ContainerDefinition(**self.munge_container_attributes())
             ],
         ))
+        return task_definition
 
-        service = t.add_resource(ecs.Service(
+
+    def create_ecs_service(self):
+        t = self.template
+        t.add_resource(ecs.Service(
             'FargateService',
-            DependsOn=service_dep,
+            DependsOn=self.listener.title,
             Cluster=self.vars['ClusterName'],
             DesiredCount=self.vars['DesiredCount'],
-            TaskDefinition=Ref(task_definition),
+            TaskDefinition=Ref(self.task_definition),
             LaunchType='FARGATE',
             NetworkConfiguration=ecs.NetworkConfiguration(
                 AwsvpcConfiguration=ecs.AwsvpcConfiguration(
@@ -330,21 +348,71 @@ class ECSFargate(BaseTemplate):
                 ecs.LoadBalancer(
                     ContainerName=self.vars['ContainerName'],
                     ContainerPort=self.vars['ContainerPort'],
-                    TargetGroupArn=Ref(target_group),
+                    TargetGroupArn=Ref(self.target_group),
                 ),
             ],
         ))
+        return
 
-        if self.vars['ServiceUrl']:
-            self.route53_record_set()
-            service_dns = self.vars['ServiceUrl']
+
+    def route53_record_set(self):
+        t = self.template
+        t.add_resource(route53.RecordSetGroup(
+            "RecordSetGroup",
+            HostedZoneName=self.vars["HostedZone"] + ".",
+            RecordSets=[route53.RecordSet(
+                Name=self.vars['ServiceFqdn'] + ".",
+                Type="A",
+                AliasTarget=route53.AliasTarget(
+                    HostedZoneId=get_elb_hosted_zone_id(self.vars['LoadBalancerArn']),
+                    DNSName=self.vars['LoadBalancerUrl'],
+                ),
+            )],
+        ))
+        return
+
+
+    def create_template(self):
+
+        # Munge user_data
+        self.vars = self.validate_user_data()
+        if not self.vars['Family']:
+            self.vars['Family'] = self.vars['ContainerName']
+        if self.vars['Certificates']:
+            self.protocol = 'HTTPS'
         else:
-            service_dns = self.vars['LoadBalancerUrl']
+            self.protocol = 'HTTP'
+        #print(self.vars)
 
-        LocalDNS = t.add_output(Output(
-            "ServiceDNS",
-            Description="The DNS domainname of the service",
-            Value=service_dns
+        # CloudWatch
+        self.log_group = self.create_log_group()
+
+        # ELB
+        self.target_group = self.create_target_group()
+        if self.vars['ListenerPort'] == 80:
+            self.listener = self.create_listener_rule()
+        else:
+            self.listener = self.create_listener()
+
+        # ECS
+        self.task_definition = self.create_ecs_task()
+        self.create_ecs_service()
+
+        # Route53
+        if self.vars['ServiceFqdn']:
+            self.route53_record_set()
+            self.service_dns = self.vars['ServiceFqdn']
+        else:
+            self.service_dns = self.vars['LoadBalancerUrl']
+
+        # Outputs
+        self.template.add_output(Output(
+            "ServiceUrl",
+            Description="The fully qualified URL of the service",
+            Value='://'.join([
+                self.protocol.lower(),
+                self.service_dns,
+            ])
         ))
 
 
