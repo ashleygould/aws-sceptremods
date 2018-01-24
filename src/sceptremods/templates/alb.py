@@ -48,11 +48,30 @@ class ALB(BaseTemplate):
             'default': str(),
             'description': 'Security group in which to place the ALB',
         },
+        'LogBucket': {
+            'type': str,
+            'default': str(),
+            'description': 'Name of an S3 bucket where access log files are stored',
+        },
+        'LogPrefix': {
+            'type': str,
+            'default': str(),
+            'description': 'A prefix for the all log object keys',
+        },
     }
 
     def create_template(self):
         self.vars = self.validate_user_data()
         t = self.template
+
+        if self.vars['LogBucket']:
+            elb_attrubutes = [
+                elb.LoadBalancerAttributes(Key='access_logs.s3.enabled', Value='true'),
+                elb.LoadBalancerAttributes(Key='access_logs.s3.bucket', Value=self.vars['LogBucket']),
+                elb.LoadBalancerAttributes(Key='access_logs.s3.prefix', Value=self.vars['LogPrefix']),
+            ]
+        else:
+            elb_attrubutes = NoValue
 
         alb = t.add_resource(elb.LoadBalancer(
             "ApplicationLoadBalancer",
@@ -60,6 +79,7 @@ class ALB(BaseTemplate):
             Scheme="internet-facing",
             SecurityGroups=[self.vars['PublicSecurityGroup']],
             Subnets=[subnet.strip() for subnet in self.vars['PublicSubnets'].split(',')],
+            LoadBalancerAttributes=elb_attrubutes,
         ))
     
         default_target_group = t.add_resource(elb.TargetGroup(
