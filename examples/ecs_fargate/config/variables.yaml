@@ -1,0 +1,4 @@
+poc_account_id: '012345678901'
+poc_region: us-east-1
+poc_hosted_zone: ashley.devops.ucop.edu
+service_name: nginxtest

@@ -1,0 +1,10 @@
+template_path: templates/vpc_wrapper.py
+
+stack_tags:
+  team: devops
+  app: {{ var.service_name }}
+  env: poc
+
+sceptre_user_data:
+  VpcCIDR: 10.128.0.0/16
+  AZCount: 2

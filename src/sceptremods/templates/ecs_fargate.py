@@ -105,7 +105,7 @@ class ECSFargate(BaseTemplate):
         'ContainerProtocol': {
             'type': str,
             'default': 'tcp',
-            'description': 'The network protocol the ECS container.',
+            'description': 'The network protocol of the ECS container.',
         },
         'ContainerImage': {
             'type': str,
@@ -148,6 +148,11 @@ class ECSFargate(BaseTemplate):
             'type': int,
             'default': 80,
             'description': 'The network port of the ALB Listener.',
+        },
+        'TargetGroupProtocol': {
+            'type': str,
+            'default': 'HTTP',
+            'description': 'The protocol of the target group.  Either HTTP or HTTPS.',
         },
         'HealthCheckAttributes': {
             'type': dict,
@@ -240,19 +245,19 @@ class ECSFargate(BaseTemplate):
 
     def create_log_group(self):
         t = self.template
-        self.log_group = t.add_resource(logs.LogGroup(
+        log_group = t.add_resource(logs.LogGroup(
             'LogGroup',
             LogGroupName='-'.join(['FargateLogGroup', self.vars['Family']]),
             RetentionInDays=self.vars['LogRetention'],
         ))
+        return log_group
 
 
     def create_target_group(self):
         t = self.template
         required_attributes = dict(
-            Name='TG-' + self.vars['ContainerName'],
-            Port=self.vars['ListenerPort'],
-            Protocol=self.protocol,
+            Port=self.vars['ContainerPort'],
+            Protocol=self.vars['TargetGroupProtocol'],
             TargetType='ip',
             VpcId=self.vars['VpcId'],
         )

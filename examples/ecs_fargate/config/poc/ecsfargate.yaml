@@ -1,0 +1,32 @@
+template_path: templates/ecs_fargate_wrapper.py
+
+hooks:
+  before_create:
+    - !account_verifier {{ var.poc_account_id }}
+    - !route53_hosted_zone {{ var.poc_hosted_zone }}
+    - !ecs_cluster escfargate01
+  before_update:
+    - !account_verifier {{ var.poc_account_id }}
+
+stack_tags:
+  team: devops
+  app: {{ var.service_name }}
+  env: poc
+
+sceptre_user_data:
+  VpcId: !stack_output poc/vpc::VpcId
+  Subnets: !stack_output poc/vpc::PrivateSubnets
+  SecurityGroup: !stack_output poc/sg::PrivateSecurityGroup
+  LoadBalancerArn: !stack_output poc/alb::LoadBalancerArn
+  LoadBalancerUrl: !stack_output poc/alb::LoadBalancerUrl
+  DefaultListener: !stack_output poc/alb::DefaultListener
+  ListenerPort: 443
+  HostedZone: {{ var.poc_hosted_zone }}
+  ServiceFqdn: {{ var.service_name }}.{{ var.poc_hosted_zone }}
+  Certificates: 
+    - !certificate_arn {{ var.service_name }}.{{ var.poc_hosted_zone }} us-east-1
+  ClusterName: escfargate01
+  Family: {{ var.service_name }}
+  ContainerName: nginx
+  ContainerImage: nginx
+  ContainerPort: 80

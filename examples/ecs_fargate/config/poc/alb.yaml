@@ -1,0 +1,18 @@
+template_path: templates/alb_wrapper.py
+
+hooks:
+  before_create:
+    - !acm_certificate {{ var.service_name }}.{{ var.poc_hosted_zone }} {{ var.poc_hosted_zone }} us-east-1
+
+stack_tags:
+  team: devops
+  app: {{ var.service_name }}
+  env: poc
+
+sceptre_user_data:
+  VpcId: !stack_output poc/vpc::VpcId
+  PublicSubnets: !stack_output poc/vpc::PublicSubnets
+  PublicSecurityGroup: !stack_output poc/sg::PublicSecurityGroup
+  LogBucket: elblogs-{{ var.poc_account_id }}-{{ var.service_name }}
+  LogPrefix: {{ var.service_name }}
+

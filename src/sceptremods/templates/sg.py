@@ -42,10 +42,8 @@ class SG(BaseTemplate):
         self.vars = self.validate_user_data()
         t = self.template
 
-        print(self.vars['PublicPortMap'])
         public_ingress_rules = list()
         for mapping in self.vars['PublicPortMap']:
-            print(mapping)
             public_ingress_rules.append(ec2.SecurityGroupRule(
                 IpProtocol=mapping.get('Protocol', 'tcp'),
                 ToPort=mapping['Port'],

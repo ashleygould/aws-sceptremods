@@ -67,8 +67,14 @@ class AcmCertificate(Hook):
             self.logger.debug('{} - Certificate request is pending validation '
                 'for {}'.format(__name__, cert_fqdn)
             )
-            acm.request_validation(cert, validation_domain, region)
-
+            #acm.request_validation(cert, validation_domain, region)
+"""
+  File "/home/agould/git-repos/github/ashleygould/aws-sceptremods/src/sceptremods/hooks/acm_certificate.py", line 70, in run
+    acm.request_validation(cert, validation_domain, region)
+  File "/home/agould/git-repos/github/ashleygould/aws-sceptremods/src/sceptremods/util/acm.py", line 153, in request_validation
+    if validation_options['ValidationMethod'] == 'DNS':
+KeyError: 'ValidationMethod'
+"""
         elif cert['Status'] == 'VALIDATION_TIMED_OUT':
             self.logger.debug('{} - Certificate request timed out '
                 'for {}'.format(__name__, cert_fqdn)

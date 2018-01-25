@@ -1,0 +1,9 @@
+template_path: templates/sg_wrapper.py
+
+stack_tags:
+  team: devops
+  app: {{ var.service_name }}
+  env: poc
+
+sceptre_user_data:
+  VpcId: !stack_output poc/vpc::VpcId
