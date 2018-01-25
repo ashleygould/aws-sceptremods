@@ -20,7 +20,7 @@ Options:
                          populates a new project directory with basic
                          sceptre layout and sceptremods wrappers.  The
                          new project directory and sceptre 'project_code'
-                         take on the name 'sceptre-project-${PROJECT}.
+                         take on the name 'sceptre-${PROJECT}.
     -r, --region REGION  AWS region for initialized project.
 '''
 

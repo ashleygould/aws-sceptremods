@@ -9,4 +9,7 @@ MODULES = [
     'vpc',
     'vpc_flowlogs',
     'cloudfront_s3_website',
+    'sg',
+    'alb',
+    'ecs_fargate',
 ]
