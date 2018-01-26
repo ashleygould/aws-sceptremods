@@ -1,0 +1,15 @@
+template_path: templates/trusted-subnet-webacl.yaml
+
+hooks:
+    before_create:
+        - !account_verifier {{ var.build_account_id }}
+    before_update:
+        - !account_verifier {{ var.build_account_id }}
+
+parameters:
+  TrustedSubnet: {{ var.on_prem_subnet }}
+
+stack_tags:
+  team: was
+  app: cfs3sites
+  env: build

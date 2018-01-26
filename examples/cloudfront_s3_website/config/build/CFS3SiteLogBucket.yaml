@@ -1,0 +1,15 @@
+template_path: templates/cfs3site-log-bucket.py
+
+hooks:
+    before_create:
+        - !account_verifier {{ var.build_account_id }}
+    before_update:
+        - !account_verifier {{ var.build_account_id }}
+
+
+stack_tags:
+  team: was
+  app: cfs3sites
+  env: build
+
+sceptre_user_data: {}

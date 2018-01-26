@@ -1,0 +1,27 @@
+template_path: templates/cloudfront_s3_website_wrapper.py
+
+hooks:
+    before_create:
+        - !account_verifier {{ var.build_account_id }}
+        - !route53_hosted_zone {{ var.build_hosted_zone }}
+        - !acm_certificate qa.ashley-demo.{{ var.build_hosted_zone }} {{ var.build_hosted_zone }} us-east-1
+
+    before_update:
+        - !account_verifier {{ var.build_account_id }}
+
+stack_tags:
+  team: devops
+  app: ashley-demo
+  env: qa
+
+sceptre_user_data:
+  ApplicationName: ashley-demo
+  HostedZoneDomainName: {{ var.build_hosted_zone }}
+  RunEnvironment: qa
+  AcmCertificateARN: !certificate_arn  qa.ashley-demo.{{ var.build_hosted_zone }} us-east-1
+
+  LogBucket: !stack_output_external sceptre-cfs3sites-build-CFS3SiteLogBucket::CFS3SiteLogBucket
+  WebACLId: !stack_output_external sceptre-cfs3sites-build-CFS3SiteDefaultWAF::TrustedSubnetWebACL
+  OriginAccessIdentity: !stack_output_external sceptre-cfs3sites-build-CFS3SiteOriginAccessIdentity::OriginAccessIdentity
+  S3CanonicalUserId: !stack_output_external sceptre-cfs3sites-build-CFS3SiteOriginAccessIdentity::S3CanonicalUserId
+

@@ -1,0 +1,9 @@
+on_prem_subnet: '192.168.0.0/16'
+
+# poc account
+poc_account_id: '111111111111'
+poc_hosted_zone: 'ashley-poc.blee.red'
+
+# build account
+build_account_id: '222222222222'
+build_hosted_zone: 'ashley-build.blee.red'

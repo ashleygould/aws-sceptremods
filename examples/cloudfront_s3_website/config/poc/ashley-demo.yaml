@@ -1,0 +1,26 @@
+template_path: templates/cloudfront_s3_website_wrapper.py
+
+hooks:
+    before_create:
+        - !account_verifier {{ var.poc_account_id }}
+        - !route53_hosted_zone {{ var.poc_hosted_zone }}
+        - !acm_certificate poc.ashley-demo.{{ var.poc_hosted_zone }} {{ var.poc_hosted_zone }}
+
+    before_update:
+        - !account_verifier {{ var.poc_account_id }}
+
+stack_tags:
+  team: devops
+  app: ashley-demo
+  env: poc
+
+sceptre_user_data:
+  ApplicationName: ashley-demo
+  HostedZoneDomainName: {{ var.poc_hosted_zone }}
+  RunEnvironment: poc
+  LogBucket: !stack_output poc/CFS3SiteLogBucket::CFS3SiteLogBucket
+  WebACLId: !stack_output poc/CFS3SiteDefaultWAF::TrustedSubnetWebACL
+  OriginAccessIdentity: !stack_output poc/CFS3SiteOriginAccessIdentity::OriginAccessIdentity
+  S3CanonicalUserId: !stack_output poc/CFS3SiteOriginAccessIdentity::S3CanonicalUserId
+  AcmCertificateARN: !certificate_arn poc.ashley-demo.{{ var.poc_hosted_zone }}
+

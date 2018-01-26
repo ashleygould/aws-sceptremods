@@ -1,0 +1,15 @@
+template_path: templates/cf-origin-access-identity.yaml
+
+hooks:
+    before_create:
+        - !account_verifier {{ var.build_account_id }}
+    before_update:
+        - !account_verifier {{ var.build_account_id }}
+
+parameters:
+  Comment:
+
+stack_tags:
+  team: was
+  app: cfs3sites
+  env: poc
