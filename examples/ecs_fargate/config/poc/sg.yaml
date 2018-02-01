@@ -7,3 +7,18 @@ stack_tags:
 
 sceptre_user_data:
   VpcId: !stack_output poc/vpc::VpcId
+  SecurityGroups:
+    - name: PublicSecurityGroup
+      description: allow inbound traffic from internet on specified ports
+      ingress_rules:
+        - port: 80
+          proto: tcp
+          source_ip: 0.0.0.0/16
+        - port: 443
+          proto: tcp
+          source_ip: 0.0.0.0/16
+    - name: PrivateSecurityGroup
+      description: allow inbound traffic from public security group on any port
+      ingress_rules:
+        - source_sg: PublicSecurityGroup
+
