@@ -9,7 +9,8 @@ Stuff like that.
 Usage:
     sceptremods (-l | -h | -v)
     sceptremods -m MODULE
-    sceptremods --init PROJECT [-r REGION]
+    sceptremods --init PROJECT [-d DIR] [-r REGION]
+    sceptremods --update PROJECT [-d DIR]
 
 Options:
     -h, --help           Print usage message.
@@ -21,7 +22,9 @@ Options:
                          sceptre layout and sceptremods wrappers.  The
                          new project directory and sceptre 'project_code'
                          take on the name 'sceptre-${PROJECT}.
-    -r, --region REGION  AWS region for initialized project.
+    --update PROJECT     Update an existing project with new wrappers.
+    -d, --dir DIR        Path to parent directory of project. Defaults to CWD.
+    -r, --region REGION  AWS region for initialized project. [default: us-west-2]
 '''
 
 
@@ -37,8 +40,6 @@ from docopt import docopt
 
 import sceptremods
 from sceptremods.templates import BaseTemplate
-
-DEFAULT_REGION = 'us-west-2'
 
 
 def recursive_overwrite(src, dest):
@@ -57,26 +58,44 @@ def recursive_overwrite(src, dest):
         shutil.copyfile(src, dest)
 
 
-def initialize_project(project, region):
+def initialize_project(args):
     """
-    Generate project directories and populate with sceptremods wrappers.
-    Create a project config.yaml file.
+    Generate project directories or update existing project.
     """
+    if args['--init']:
+        project = 'sceptre-' + args['--init']
+    else:
+        project = 'sceptre-' + args['--update']
 
-    project_dir = os.path.join(os.getcwd(), project)
-    config_dir = os.path.join(project_dir, 'config')
-    config_file = os.path.join(config_dir, 'config.yaml')
+    if not args['--dir']:
+        base_dir = os.getcwd()
+    else:
+        base_dir = os.path.abspath(args['--dir'])
+        if not os.path.isdir(base_dir):
+            print('Directory "{}" not found'.format(base_dir))
+            sys.exit(1)
 
-    if not os.path.isdir(project_dir):
+    print(base_dir)
+    if os.path.basename(base_dir) == project:
+        project_dir = os.path.join(base_dir)
+    else:
+        project_dir = os.path.join(base_dir, project)
+
+    if args['--update']:
+        if not os.path.isdir(project_dir):
+            print('project {} not found'.format(project_dir))
+            sys.exit(1)
+        print('updating existing project in {}'.format(project_dir))
+    else:
+        if os.path.isdir(project_dir):
+            print('project already exists in {}'.format(project_dir))
+            sys.exit(1)
+        print('creating new project in {}'.format(project_dir))
+        config_dir = os.path.join(project_dir, 'config')
+        config_file = os.path.join(config_dir, 'config.yaml')
         os.makedirs(project_dir)
-
-    if not os.path.isdir(config_dir):
         os.makedirs(config_dir)
-
-    if not os.path.isfile(config_file):
-        if not region:
-            region = os.environ.get('AWS_DEFAULT_REGION', DEFAULT_REGION)
-        config = dict(project_code=project, region=region)
+        config = dict(project_code=project, region=args['--region'])
         with open(config_file, 'w') as f:
             yaml.safe_dump(config, stream=f, default_flow_style=False)
 
@@ -98,12 +117,13 @@ def get_help(module_name):
 
 def main():
     args = docopt(__doc__, version='sceptremods %s' % sceptremods.__version__)
+    print(args)
 
     if args['--list']:
         print('sceptremods modules: \n{}'.format('\n'.join(sceptremods.MODULES)))
 
-    if args['--init']:
-        initialize_project('sceptre-' + args['--init'], args['--region'])
+    if args['--init'] or args['--update']:
+        initialize_project(args)
 
     if args['--module']:
         module_name = args['--module']
