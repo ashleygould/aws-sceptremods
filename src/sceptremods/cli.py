@@ -2,8 +2,10 @@
 '''
 CLI for sceptremods
 
-Show listing and docs of modules in the collection.
+Show listing of modules in the collection.
+Print documentation for a specific module.
 Generate a new sceptre project.
+Update an existing secptre project.
 Stuff like that.
 
 Usage:
@@ -19,12 +21,15 @@ Options:
     -m, --module MODULE  Print documentation for template module MODULE.
     --init PROJECT       Initalize a new sceptre project.  This command
                          populates a new project directory with basic
-                         sceptre layout and sceptremods wrappers.  The
-                         new project directory and sceptre 'project_code'
-                         take on the name 'sceptre-${PROJECT}.
+                         sceptre layout and sceptremods wrappers.
     --update PROJECT     Update an existing project with new wrappers.
-    -d, --dir DIR        Path to parent directory of project. Defaults to CWD.
+    -d, --dir DIR        Path to parent directory of a project or the 
+                         project directory itself if an existing project.
+                         [default: .]
     -r, --region REGION  AWS region for initialized project. [default: us-west-2]
+
+Example:
+    sceptremods --init -d ~/projects -r us-east-1 sceptre-myprog
 '''
 
 
@@ -63,9 +68,9 @@ def initialize_project(args):
     Generate project directories or update existing project.
     """
     if args['--init']:
-        project = 'sceptre-' + args['--init']
+        project = args['--init']
     else:
-        project = 'sceptre-' + args['--update']
+        project = args['--update']
 
     if not args['--dir']:
         base_dir = os.getcwd()
@@ -83,19 +88,23 @@ def initialize_project(args):
 
     if args['--update']:
         if not os.path.isdir(project_dir):
-            print('project {} not found'.format(project_dir))
+            print('project "{}" not found at {}'.format(project, project_dir))
             sys.exit(1)
-        print('updating existing project in {}'.format(project_dir))
+        print('updating existing project "{}" at {}'.format(project, project_dir))
     else:
         if os.path.isdir(project_dir):
-            print('project already exists in {}'.format(project_dir))
+            print('project "{}" already exists at {}'.format(project, project_dir))
             sys.exit(1)
-        print('creating new project in {}'.format(project_dir))
+        print('creating new project "{}" at {}'.format(project, project_dir))
         config_dir = os.path.join(project_dir, 'config')
         config_file = os.path.join(config_dir, 'config.yaml')
         os.makedirs(project_dir)
         os.makedirs(config_dir)
-        config = dict(project_code=project, region=args['--region'])
+        config = dict(
+            project_code=project, 
+            region=args['--region'],
+            sceptremods_version=sceptremods.__version__,
+        )
         with open(config_file, 'w') as f:
             yaml.safe_dump(config, stream=f, default_flow_style=False)
 
@@ -117,7 +126,7 @@ def get_help(module_name):
 
 def main():
     args = docopt(__doc__, version='sceptremods %s' % sceptremods.__version__)
-    print(args)
+    #print(args)
 
     if args['--list']:
         print('sceptremods modules: \n{}'.format('\n'.join(sceptremods.MODULES)))
