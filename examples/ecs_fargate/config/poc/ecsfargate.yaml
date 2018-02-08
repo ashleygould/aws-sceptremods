@@ -5,6 +5,8 @@ hooks:
     - !account_verifier {{ var.poc_account_id }}
     - !route53_hosted_zone {{ var.poc_hosted_zone }}
     - !ecs_cluster escfargate01
+    - !account_verifier {{ var.poc_account_id }}
+
   before_update:
     - !account_verifier {{ var.poc_account_id }}
 
