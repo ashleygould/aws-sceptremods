@@ -12,4 +12,5 @@ MODULES = [
     'sg',
     'alb',
     'ecs_fargate',
+    'rds',
 ]

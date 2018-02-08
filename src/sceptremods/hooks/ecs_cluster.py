@@ -11,10 +11,7 @@ class ECSCluster(Hook):
         super(ECSCluster, self).__init__(*args, **kwargs)
 
     def run(self):
-        """
-        """
         cluster_name = self.argument
-
         response = self.connection_manager.call(
             service="ecs",
             command="describe_clusters",

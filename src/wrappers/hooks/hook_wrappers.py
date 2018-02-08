@@ -21,3 +21,7 @@ class AccountVerifier(AccountVerifier):
 from sceptremods.hooks.ecs_cluster import ECSCluster
 class AccountVerifier(ECSCluster):
     pass
+ 
+from sceptremods.hooks.ecs_task_exec_role import ECSTaskExecRole
+class AccountVerifier(ECSTaskExecRole):
+    pass
