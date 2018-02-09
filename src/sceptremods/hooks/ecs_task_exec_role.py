@@ -16,7 +16,7 @@ class ECSTaskExecRole(Hook):
 
     def run(self):
         role_name = "ecsTaskExecutionRole"
-        policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy",
+        policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
 
         try:
             response = self.connection_manager.call(
