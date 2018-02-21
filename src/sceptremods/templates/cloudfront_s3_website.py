@@ -74,6 +74,11 @@ class CFS3Site(BaseTemplate):
             "default": str(),
             "description": "Website public FQND.  The SSL cert must match this domainname.  This template does not generate the DNS entry for FQDNPublic.  You must create a DNS CNAME such that FQDNPublic points to the domainname you set in FQDNInternal.",
         },
+        "OriginPath": {
+            "type": str,
+            "default": "/",
+            "description": "The path that CloudFront uses to request content from an S3 bucket origin.",
+        },
         "DefaultRootObject": {
             "type": str,
             "default": "welcome.html",
@@ -186,7 +191,8 @@ class CFS3Site(BaseTemplate):
                         ),
                     ),
                     Id="myS3Origin",
-                    DomainName=GetAtt(self.SiteBucket, "DomainName")
+                    DomainName=GetAtt(self.SiteBucket, "DomainName"),
+                    OriginPath=self.vars["OriginPath"],
                 )],
                 DefaultRootObject=self.vars["DefaultRootObject"],
                 PriceClass="PriceClass_100",
@@ -251,6 +257,10 @@ class CFS3Site(BaseTemplate):
             self.vars["FQDNPublic"] = self.vars["FQDNInternal"]
         if not self.vars["WebACLId"]:
             self.vars["WebACLId"] = NoValue
+        if not self.vars["OriginPath"].startswith('/'):
+            self.vars["OriginPath"] = '/' + self.vars["OriginPath"]
+        if self.vars["OriginPath"].endswith('/'):
+            self.vars["OriginPath"] = self.vars["OriginPath"][:-1]
 
         self.origin_bucket()
         self.origin_bucket_policy()
