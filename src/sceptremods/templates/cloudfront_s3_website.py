@@ -26,7 +26,7 @@ from sceptremods.templates import BaseTemplate
 #
 def validate_run_environment(env):
     allowed_values = ['poc', 'dev', 'qa', 'uat', 'prod']
-    if env not in allowed_values:
+    if env and env not in allowed_values:
         raise ValueError(
             "'RunEnvironment' must be one of {}.".format(allowed_values)
         )
@@ -60,8 +60,8 @@ class CFS3Site(BaseTemplate):
         },
         "RunEnvironment": {
             "type": str,
-            "default": "poc",
-            "description": "What service environment this website runs in.  This label gets prepended to the internal DNS name of the website.  If 'prod' is set, the label is not prependend.  Allowed values: 'poc', 'dev', 'qa', 'uat', 'prod'.",
+            "default": str(),
+            "description": "What service environment this website runs in.  If set, this label gets prepended to the internal DNS name of the website.  Allowed values: 'poc', 'dev', 'qa', 'uat', 'prod'.",
             "validator": validate_run_environment,
         },
         "FQDNInternal": {
@@ -76,7 +76,7 @@ class CFS3Site(BaseTemplate):
         },
         "OriginPath": {
             "type": str,
-            "default": "/",
+            "default": str(),
             "description": "The path that CloudFront uses to request content from an S3 bucket origin.",
         },
         "DefaultRootObject": {
@@ -128,9 +128,8 @@ class CFS3Site(BaseTemplate):
                 LogFilePrefix=self.vars["FQDNPublic"] + "/bucket_logs/"
             ),
             BucketName="-".join([
-                "cfs3site-bucket",
-                self.vars["RunEnvironment"],
-                self.vars["ApplicationName"],
+                "cfs3site-originbucket",
+                self.vars["FQDNInternal"],
             ]),
         ))
 
@@ -249,18 +248,25 @@ class CFS3Site(BaseTemplate):
         self.vars = self.validate_user_data()
         if not self.vars["FQDNInternal"]:
             self.vars["FQDNInternal"] = ".".join([
-                self.vars["RunEnvironment"],
                 self.vars["ApplicationName"],
                 self.vars["HostedZoneDomainName"],
             ])
+            if self.vars["RunEnvironment"]:
+                self.vars["FQDNInternal"] = ".".join([
+                    self.vars["RunEnvironment"],
+                    self.vars["FQDNInternal"],
+                ])
         if not self.vars["FQDNPublic"]:
             self.vars["FQDNPublic"] = self.vars["FQDNInternal"]
         if not self.vars["WebACLId"]:
             self.vars["WebACLId"] = NoValue
-        if not self.vars["OriginPath"].startswith('/'):
-            self.vars["OriginPath"] = '/' + self.vars["OriginPath"]
-        if self.vars["OriginPath"].endswith('/'):
-            self.vars["OriginPath"] = self.vars["OriginPath"][:-1]
+        if not self.vars["OriginPath"]:
+            self.vars["OriginPath"] = NoValue
+        else:
+            if not self.vars["OriginPath"].startswith('/'):
+                self.vars["OriginPath"] = '/' + self.vars["OriginPath"]
+            if self.vars["OriginPath"].endswith('/'):
+                self.vars["OriginPath"] = self.vars["OriginPath"][:-1]
 
         self.origin_bucket()
         self.origin_bucket_policy()
