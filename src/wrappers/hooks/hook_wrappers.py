@@ -19,9 +19,17 @@ class AccountVerifier(AccountVerifier):
     pass
 
 from sceptremods.hooks.ecs_cluster import ECSCluster
-class AccountVerifier(ECSCluster):
+class ECSCluster(ECSCluster):
     pass
  
 from sceptremods.hooks.ecs_task_exec_role import ECSTaskExecRole
-class AccountVerifier(ECSTaskExecRole):
+class ECSTaskExecRole(ECSTaskExecRole):
+    pass
+ 
+from sceptremods.hooks.s3_bucket import S3Bucket
+class S3Bucket(S3Bucket):
+    pass
+
+from sceptremods.hooks.zappa_lambda import ZappaLambda
+class ZappaLambda(ZappaLambda):
     pass
