@@ -113,6 +113,12 @@ def request_cert(cert_fqdn, validation_domain, region=DEFAULT_REGION):
         )
 
 
+def delete_cert(cert_arn, region=DEFAULT_REGION):
+    """Delete an existing ACM certificate."""
+    acm_client = boto3.client('acm', region_name=region)
+    response = acm_client.delete_certificate(CertificateArn=cert_arn)
+
+
 def create_validation_record_set(resource_record, validation_domain,
         region=DEFAULT_REGION):
     """

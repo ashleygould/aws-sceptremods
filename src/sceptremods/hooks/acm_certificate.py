@@ -67,24 +67,22 @@ class AcmCertificate(Hook):
             self.logger.debug('{} - Certificate request is pending validation '
                 'for {}'.format(__name__, cert_fqdn)
             )
-            #acm.request_validation(cert, validation_domain, region)
-            """
-  File "/home/agould/git-repos/github/ashleygould/aws-sceptremods/src/sceptremods/hooks/acm_certificate.py", line 70, in run
-    acm.request_validation(cert, validation_domain, region)
-  File "/home/agould/git-repos/github/ashleygould/aws-sceptremods/src/sceptremods/util/acm.py", line 153, in request_validation
-    if validation_options['ValidationMethod'] == 'DNS':
-KeyError: 'ValidationMethod'
-"""
+            if ("ValidationMethod" in cert["DomainValidationOptions"] and 
+                cert["DomainValidationOptions"]["ValidationMethod"] == "DNS"
+            ):
+                acm.request_validation(cert, validation_domain, region)
+
         elif cert['Status'] == 'VALIDATION_TIMED_OUT':
             self.logger.debug('{} - Certificate request timed out '
                 'for {}'.format(__name__, cert_fqdn)
             )
-            self.connection_manager.call(
-                service="acm",
-                command="delete_certificate",
-                kwargs=dict(CertificateArn=cert['CertificateArn']),
+            self.logger.debug('{} - Deleting certificate: {}'.format(
+                __name__, cert['CertificateArn'])
             )
-            self.logger.debug('Re-requesting certificate for {}'.format(cert_fqdn))
+            acm.delete_cert(cert['CertificateArn'], region=region)
+            self.logger.debug('{} - Re-requesting certificate: {}'.format(
+                __name__, cert_fqdn)
+            )
             acm.request_cert(cert_fqdn, validation_domain, region)
 
         elif cert['Status'] == 'FAILED':
@@ -99,14 +97,12 @@ KeyError: 'ValidationMethod'
             raise RuntimeError('ACM certificate status is {}'.format(cert['Status']))
 
 def main():
-    #cert_fqdn = '*.was.devops.ucop.edu'
-    #cert_fqdn = '*.was-poc.devops.ucop.edu'
-    #cert_fqdn = 'testing-only-do-not-sign.devops.ucop.edu'
+    """test this hook outside of sceptre"""
+
+    # test params
     cert_fqdn = 'testing00.blee.red'
-    #validation_domain = 'ucop.edu'
     validation_domain = 'blee.red'
     region = 'us-east-1'
-    #region = 'us-west-2'
 
     param_string = '{} {} {}'.format(cert_fqdn,  validation_domain, region)
     request = AcmCertificate(argument=param_string)
