@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
-from sceptre.hooks import Hook
 import json
+
 from botocore.exceptions import ClientError
+from sceptre.hooks import Hook
 
 
 
