@@ -76,6 +76,7 @@ class ALB(BaseTemplate):
         t.add_mapping("RegionalELBAccountIds", self.ELB_ACCOUNT_ID)
         log_bucket = t.add_resource(s3.Bucket(
             "LogBucket",
+            DeletionPolicy="Retain",
             BucketName=self.vars["LogBucket"],
         ))
         t.add_resource(s3.BucketPolicy(

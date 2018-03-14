@@ -55,6 +55,7 @@ class ALB_LOG_BUCKET(BaseTemplate):
         
         self.log_bucket = t.add_resource(s3.Bucket(
             "LogBucket",
+            DeletionPolicy="Retain",
             BucketName=self.vars["BucketName"],
         ))
 

@@ -3,8 +3,10 @@ within sceptre projects.  Each class in this module acts as a pass-though class
 to a real custom hook.
 
 This is an unfortunate hack required because sceptre does not currently support
-calling hooks via python sys.path.  Sceptre v2 resolves this issue.  See:
-https://github.com/cloudreach/sceptre/wiki/Roadmap
+calling hooks via python sys.path.  Sceptre v2 resolves this issue, but until
+then...
+
+See: https://github.com/cloudreach/sceptre/wiki/Roadmap
 """
 
 from sceptremods.hooks.route53 import Route53HostedZone
