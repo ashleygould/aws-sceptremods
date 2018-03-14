@@ -1,8 +1,8 @@
 template_path: templates/alb_wrapper.py
 
 hooks:
-  before_create:
-    - !acm_certificate {{ var.service_name }}.{{ var.poc_hosted_zone }} {{ var.poc_hosted_zone }} us-east-1
+  after_delete:
+    - !s3_bucket action=delete bucket_name=elblogs-{{ var.poc_account_id }}-{{ var.service_name }}
 
 stack_tags:
   team: devops

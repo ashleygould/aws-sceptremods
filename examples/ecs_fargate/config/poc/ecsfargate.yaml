@@ -5,7 +5,7 @@ hooks:
     - !account_verifier {{ var.poc_account_id }}
     - !route53_hosted_zone {{ var.poc_hosted_zone }}
     - !ecs_cluster escfargate01
-    - !account_verifier {{ var.poc_account_id }}
+    - !acm_certificate {{ var.service_name }}.{{ var.poc_hosted_zone }} {{ var.poc_hosted_zone }} us-east-1
 
   before_update:
     - !account_verifier {{ var.poc_account_id }}
