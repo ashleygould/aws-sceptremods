@@ -97,15 +97,12 @@ class AcmCertificate(Hook):
             raise RuntimeError('ACM certificate status is {}'.format(cert['Status']))
 
 def main():
-    """test this hook outside of sceptre"""
+    """
+    test acm_certificate hook actions:
+        python ./acm_certificate.py testing00.blee.red blee.red us-east-1
+    """
 
-    # test params
-    cert_fqdn = 'testing00.blee.red'
-    validation_domain = 'blee.red'
-    region = 'us-east-1'
-
-    param_string = '{} {} {}'.format(cert_fqdn,  validation_domain, region)
-    request = AcmCertificate(argument=param_string)
+    request = AcmCertificate(argument=' '.join(sys.argv[1:]))
     request.logger = setup_logging(True, False)
     request.run()
 
