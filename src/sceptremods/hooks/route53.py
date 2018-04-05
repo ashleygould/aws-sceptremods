@@ -41,13 +41,13 @@ class Route53HostedZone(Hook):
             zone_name += "."
 
         # check if zone already exists
-        response = self.connection_manager.call(
+        response = self.stack.connection_manager.call(
             service="route53",
             command="list_hosted_zones",
         )
         hosted_zones = response["HostedZones"]
         while response["IsTruncated"]:
-            response = self.connection_manager.call(
+            response = self.stack.connection_manager.call(
                 service="route53",
                 command="list_hosted_zones",
                 kwargs=dict(Marker=reponse["NextMarker"]),
@@ -64,7 +64,7 @@ class Route53HostedZone(Hook):
 
         # create new hosted zone
         reference = uuid.uuid4().hex
-        response = self.connection_manager.call(
+        response = self.stack.connection_manager.call(
             service="route53",
             command="create_hosted_zone",
             kwargs=dict(

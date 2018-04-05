@@ -12,7 +12,7 @@ class ECSCluster(Hook):
 
     def run(self):
         cluster_name = self.argument
-        response = self.connection_manager.call(
+        response = self.stack.connection_manager.call(
             service="ecs",
             command="describe_clusters",
             kwargs=dict(
@@ -26,7 +26,7 @@ class ECSCluster(Hook):
                 __name__, response['clusters'][0]["clusterArn"])
             )
         else:
-            response = self.connection_manager.call(
+            response = self.stack.connection_manager.call(
                 service="ecs",
                 command="create_cluster",
                 kwargs=dict(

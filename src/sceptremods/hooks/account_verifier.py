@@ -31,7 +31,7 @@ class AccountVerifier(Hook):
                 )
             )
 
-        response = self.connection_manager.call(
+        response = self.stack.connection_manager.call(
             service="sts",
             command="get_caller_identity",
         )

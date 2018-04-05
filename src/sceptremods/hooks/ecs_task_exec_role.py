@@ -20,7 +20,7 @@ class ECSTaskExecRole(Hook):
         policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
 
         try:
-            response = self.connection_manager.call(
+            response = self.stack.connection_manager.call(
                 service="iam",
                 command="get_role",
                 kwargs=dict(RoleName=role_name)
@@ -45,7 +45,7 @@ class ECSTaskExecRole(Hook):
                     ]
                 })
 
-                new_role = self.connection_manager.call(
+                new_role = self.stack.connection_manager.call(
                     service="iam",
                     command="create_role",
                     kwargs=dict(
@@ -54,7 +54,7 @@ class ECSTaskExecRole(Hook):
                     )
                 )["Role"]
 
-                self.connection_manager.call(
+                self.stack.connection_manager.call(
                     service="iam",
                     command="attach_role_policy",
                     kwargs=dict(
