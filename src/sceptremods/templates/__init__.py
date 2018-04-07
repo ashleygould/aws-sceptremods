@@ -40,9 +40,19 @@ class VarSpec(object):
         )
 
     def validate(self, user_data):
+        """
+        Validate supplied user_data items are of the specified object type.
+        type can be a list of object types.
+        """
         if self.name in user_data:
             value = user_data[self.name]
-            if not isinstance(value, self.type):
+            valid_type = False
+            if not isinstance(self.type, list):
+                self.type = [self.type]
+            for _type in self.type:
+                if isinstance(value, _type):
+                    valid_type = True
+            if not valid_type:
                 raise ValueError(
                     "'{}' must be of type {}".format(self.name, self.type)
                 )
