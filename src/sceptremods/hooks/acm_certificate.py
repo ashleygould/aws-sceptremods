@@ -73,30 +73,36 @@ class AcmCertificate(Hook):
         if action == 'request':
             cert = acm.get_cert_object(cert_fqdn, region)
             if not cert:
-                self.logger.debug('{} - Requesting certificate '
-                    'for {}'.format(__name__, cert_fqdn)
+                self.logger.debug('{} - Requesting certificate for {}'.format(
+                    __name__, cert_fqdn)
                 )
+                acm.request_cert(cert_fqdn, validation_domain, region)
                 # allow time for cert to be auto signed
                 tries = 0
-                max_tries = 12
-                interval = 5
+                max_tries = 30
+                interval = 10
                 while tries < max_tries:
-                    acm.request_cert(cert_fqdn, validation_domain, region)
-                    time.wait(interval)
+                    time.sleep(interval)
                     cert = acm.get_cert_object(cert_fqdn, region)
                     if cert['Status'] != 'ISSUED':
                         tries += 1
+                        self.logger.debug('{} - Request status: {}'.format(
+                            __name__, cert['Status'])
+                        )
                     else:
                         break
+                self.logger.debug('{} - Cert: {} - Status: {}'.format(
+                    __name__, cert_fqdn, cert['Status'])
+                )
 
             elif cert['Status'] == 'ISSUED':
-                self.logger.debug('{} - Certificate issued '
-                    'for {}'.format(__name__, cert_fqdn)
+                self.logger.debug('{} - Cert: {} - Status: {}'.format(
+                    __name__, cert_fqdn, cert['Status'])
                 )
 
             elif cert['Status'] == 'PENDING_VALIDATION':
-                self.logger.debug('{} - Certificate request is pending validation '
-                    'for {}'.format(__name__, cert_fqdn)
+                self.logger.debug('{} - Cert: {} - Status: {}'.format(
+                    __name__, cert_fqdn, cert['Status'])
                 )
                 if ("ValidationMethod" in cert["DomainValidationOptions"] and 
                     cert["DomainValidationOptions"]["ValidationMethod"] == "DNS"
@@ -104,8 +110,8 @@ class AcmCertificate(Hook):
                     acm.request_validation(cert, validation_domain, region)
 
             elif cert['Status'] == 'VALIDATION_TIMED_OUT':
-                self.logger.debug('{} - Certificate request timed out '
-                    'for {}'.format(__name__, cert_fqdn)
+                self.logger.debug('{} - Cert: {} - Status: {}'.format(
+                    __name__, cert_fqdn, cert['Status'])
                 )
                 self.logger.debug('{} - Deleting certificate: {}'.format(
                     __name__, cert['CertificateArn'])
@@ -138,10 +144,11 @@ class AcmCertificate(Hook):
 def main():
     """
     test acm_certificate hook actions:
-        python ./acm_certificate.py action=request \
-                                    cert_fqdn=testing00.blee.red \
-                                    validation_domain=blee.red \
-                                    region=us-east-1
+        python ./acm_certificate.py \
+                action=request \
+                cert_fqdn=testing00.blee.red \
+                validation_domain=blee.red \
+                region=us-east-1
 
     """
 

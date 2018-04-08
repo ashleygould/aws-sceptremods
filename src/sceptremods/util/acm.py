@@ -21,7 +21,7 @@ def get_cert_arn(cert_fqdn, region=DEFAULT_REGION):
     ]
     if len(arn_list) > 1:
         raise RuntimeError(
-            "Found multiple matching ACM certificates: {}".format(cert_list)
+            "Found multiple matching ACM certificates: {}".format(arn_list)
         )
     if len(arn_list) < 1:
         return None
