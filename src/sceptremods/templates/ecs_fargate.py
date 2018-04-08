@@ -113,7 +113,8 @@ class ECSFargate(BaseTemplate):
             'description': 'The name of the docker image to use for the ECS container.',
         },
         'ContainerImageVersion': {
-            'type': str,
+            #'type': str,
+            'type': [str, int, float],
             'default': 'latest',
             'description': 'The docker image version to use for the ECS container.',
         },
@@ -180,7 +181,7 @@ class ECSFargate(BaseTemplate):
     def munge_container_attributes(self):
         image =':'.join([
             self.vars['ContainerImage'], 
-            self.vars['ContainerImageVersion'],
+            str(self.vars['ContainerImageVersion']),
         ])
         # munge ECR image path
         if self.vars['UseECR']:
