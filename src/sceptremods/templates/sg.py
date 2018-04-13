@@ -1,8 +1,39 @@
 """
+A troposphere module for generating an AWS cloudformation template
+defining EC2 Security Groups in a VPC.
+
 Assumptions:
     security groups reside in a VPC
     only ipv4 ip and cidr addresses
     no egress rules, only ingress rules
+
+AWS resources created:
+    one or more security groups with ingress rules depending on 
+
+By default we create two security groups:
+    PublicSG with ingress rules allowing ports 80, 443 from anywhere
+    PrivateSG with ungress rule allowing all traffic from PublicSG
+
+To define custom security groups, specify alternative sceptre_user_data values
+in a vpc.yaml file.  Example:
+
+  sceptre_user_data:
+    VpcId: BOGUS-VPCID
+    SecurityGroups:
+      - name: PublicSG
+        description: allow inbound traffic from internet on specified ports
+        ingress_rules:
+          - port: 80
+            proto: tcp
+            source_ip
+          - port: 443
+            proto: tcp
+            source_ip: 128.48.0.0/16
+      - name: PrivateSecurityGroup
+        description: allow inbound traffic from public security group on any port
+        ingress_rules:
+          - source_sg: PublicSecurityGroup
+
 """
 
 
