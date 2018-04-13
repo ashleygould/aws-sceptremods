@@ -106,7 +106,7 @@ def request_cert(cert_fqdn, validation_domain, region=DEFAULT_REGION):
         while 'ResourceRecord' not in cert['DomainValidationOptions'][0]:
             time.sleep(5)
             cert = acm_client.describe_certificate(CertificateArn=arn)['Certificate']
-        create_validation_record_set(
+        cert_validation_record_set(
             cert['DomainValidationOptions'][0]['ResourceRecord'],
             validation_domain,
             region,
@@ -117,36 +117,98 @@ def delete_cert(cert_arn, region=DEFAULT_REGION):
     """Delete an existing ACM certificate."""
     acm_client = boto3.client('acm', region_name=region)
     response = acm_client.delete_certificate(CertificateArn=cert_arn)
+    return
 
 
-def create_validation_record_set(resource_record, validation_domain,
-        region=DEFAULT_REGION):
+def get_resource_record_set(
+        hosted_zone,
+        record_type=None,
+        pattern=None,
+        domain_name=None, 
+    ):
     """
-    Create route53 record set for ACM certificate validation.
+    Return route53 resource_record_set by name.
+
+    :domain_name: 
+    :hosted_zone: domainname of the route53 hosted zone to query
     """
+
+    # collect all record sets in hosted zone
+    client = boto3.client('route53')
+    hosted_zone_id = get_hosted_zone_id(hosted_zone)
+    response = client.list_resource_record_sets(HostedZoneId=hosted_zone_id)
+    records = response['ResourceRecordSets']
+    if 'IsTruncated' in response:
+        while response['IsTruncated']:
+            response = client.list_resource_record_sets(
+                HostedZoneId=hosted_zone_id,
+                StartRecordName=response['NextRecordName'],
+                StartRecordType=response['NextRecordType'],
+            )
+            records.append(response['ResourceRecordSets'])
+
+    # filter for record set Type
+    if record_type:
+        records = [r for r in records if r['Type'] == record_type]
+
+    # filter for domain_name or pattern
+    if domain_name:
+        records = [r for r in records if r['Name'] == domain_name]
+    elif pattern:
+        records = [r for r in records if pattern.match(r['Name'])]
+    else:
+        raise ValueError("must supply either 'domain_name' or 'pattern'")
+    if len(records) == 0:
+        return None
+    elif len(records) == 1:
+        return records[0]
+    return records
+
+
+def change_record_set(record_set, validation_domain,
+        action='UPSERT', comment=str(), region=DEFAULT_REGION):
+    """
+    Change route53 record.
+    """
+    valid_actions = ('CREATE', 'DELETE', 'UPSERT')
+    if not action in valid_actions:
+        raise ValueError('"action" must be one of {}'.format(valid_actions))
     route53_client = boto3.client('route53', region_name=region)
     hosted_zone_id = get_hosted_zone_id(validation_domain, region)
     change_batch ={
-        'Comment': 'acm cert validation',
+        'Comment': comment,
         'Changes': [
             {
-                'Action': 'UPSERT',
-                'ResourceRecordSet': {
-                    'Name': resource_record['Name'],
-                    'Type': resource_record['Type'],
-                    'TTL': 300,
-                    'ResourceRecords': [
-                        {
-                            'Value': resource_record['Value'],
-                        },
-                    ],
-                }
+                'Action': action,
+                'ResourceRecordSet': record_set,
             }
         ]
     }
     response = route53_client.change_resource_record_sets(
         HostedZoneId=hosted_zone_id,
         ChangeBatch=change_batch,
+    )
+
+
+def cert_validation_record_set(resource_record, validation_domain, action='UPSERT'):
+    """
+    Create/delete route53 record set for ACM certificate validation.
+    """
+    record_set = {
+        'Name': resource_record['Name'],
+        'Type': resource_record['Type'],
+        'TTL': 300,
+        'ResourceRecords': [
+            {
+                'Value': resource_record['Value'],
+            },
+        ],
+    }
+    change_record_set(
+        record_set, 
+        validation_domain,
+        action,
+        'acm cert validation',
     )
 
 
