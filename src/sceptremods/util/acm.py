@@ -108,8 +108,7 @@ def request_cert(cert_fqdn, validation_domain, region=DEFAULT_REGION):
             cert = acm_client.describe_certificate(CertificateArn=arn)['Certificate']
         cert_validation_record_set(
             cert['DomainValidationOptions'][0]['ResourceRecord'],
-            validation_domain,
-            region,
+            validation_domain
         )
 
 

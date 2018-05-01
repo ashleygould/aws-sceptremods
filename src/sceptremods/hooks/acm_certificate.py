@@ -152,7 +152,6 @@ class AcmCertificate(Hook):
                     cert['DomainValidationOptions'][0]['ResourceRecord'],
                     validation_domain,
                     'DELETE',
-                    region,
                 )
                 acm.delete_cert(cert['CertificateArn'], region=region)
 
