@@ -103,7 +103,7 @@ class AcmCertificate(Hook):
                 self.logger.debug('{} - Requesting certificate for {}'.format(
                     __name__, cert_fqdn)
                 )
-                handle_cert_request(cert_fqdn, validation_domain, region)
+                self.handle_cert_request(cert_fqdn, validation_domain, region)
 
             elif cert['Status'] == 'ISSUED':
                 self.logger.debug('{} - Cert: {} - Status: {}'.format(
@@ -130,7 +130,7 @@ class AcmCertificate(Hook):
                 self.logger.debug('{} - Re-requesting certificate: {}'.format(
                     __name__, cert_fqdn)
                 )
-                handle_cert_request(cert_fqdn, validation_domain, region)
+                self.handle_cert_request(cert_fqdn, validation_domain, region)
 
             elif cert['Status'] == 'FAILED':
                 raise RuntimeError('ACM certificate request failed: {}'.format(
@@ -158,7 +158,7 @@ class AcmCertificate(Hook):
             # clean up route53 certificate validation CNAME entry
             if not cert_fqdn.endswith('.'):
                 cert_fqdn += '.'
-            validation_cname_pattern=re.compile("_\w{32}\." + re.escape(cert_fqdn))
+            validation_cname_pattern=re.compile(r'_\w{32}\.' + re.escape(cert_fqdn))
             record_set = acm.get_resource_record_set(
                 hosted_zone=validation_domain,
                 record_type='CNAME',
