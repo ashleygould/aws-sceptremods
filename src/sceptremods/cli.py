@@ -11,25 +11,26 @@ Stuff like that.
 Usage:
     sceptremods (-l | -h | -v)
     sceptremods -m MODULE
-    sceptremods --init PROJECT [-d DIR] [-r REGION]
-    sceptremods --update PROJECT [-d DIR]
+    sceptremods -p PROJECT [-d DIR] [-r REGION]
+    sceptremods (--update|--refresh) [-d DIR]
 
 Options:
-    -h, --help           Print usage message.
-    -v, --version        Print version info.
-    -l, --list           Print listing of all template modules in collection.
-    -m, --module MODULE  Print documentation for template module MODULE.
-    --init PROJECT       Initalize a new sceptre project.  This command
-                         populates a new project directory with basic
-                         sceptre layout and sceptremods wrappers.
-    --update PROJECT     Update an existing project with new wrappers.
-    -d, --dir DIR        Path to parent directory of a project or the 
-                         project directory itself if an existing project.
-                         [default: .]
-    -r, --region REGION  AWS region for initialized project. [default: us-west-2]
+    -h, --help             Print usage message.
+    -v, --version          Print version info.
+    -l, --list             Print listing of all template modules in collection.
+    -m, --module MODULE    Print documentation for template module MODULE.
+    -p, --project PROJECT  Initialize or update a sceptre project.  By default,
+                           Populate a new project directory with basic
+                           sceptre layout and sceptremods template wrappers.
+    --update               Update an existing project with new template wrappers.
+    --refresh              Update any wrappers already present in the project.
+    -d, --dir DIR          Path to parent directory of a project or the 
+                           project directory itself if an existing project.
+                           [default: .]
+    -r, --region REGION    AWS region for initialized project. [default: us-west-2]
 
 Example:
-    sceptremods --init -d ~/projects -r us-east-1 sceptre-myprog
+    sceptremods -p sceptre-myprog -d ~/projects -r us-east-1 
 '''
 
 
@@ -47,11 +48,32 @@ import sceptremods
 from sceptremods.templates import BaseTemplate
 
 
+
+def refresh_files(src, dest):
+    """
+    Update contents of existing 'dest' files from 'src' file
+    of same name.
+    """
+    if not os.path.isdir(src):
+        print('Source directory "{}" not found'.format(src))
+        sys.exit(1)
+    if os.path.isdir(dest):
+        files = os.listdir(dest)
+        for f in files:
+            if os.path.isfile(os.path.join(src, f)):
+                shutil.copyfile(os.path.join(src, f), os.path.join(dest, f))
+            else:
+                print('File "{}" not found in source dir'.format(f))
+
+
 def recursive_overwrite(src, dest):
     """
     Recursively copy 'src' directory into 'dest' directory.
     Overwrites contents of existing 'dest' files from 'src' file
     of same name.
+
+    example:
+        recursive_overwrite(wrappers, sceptre_dir)
     """
     if os.path.isdir(src):
         if not os.path.isdir(dest):
@@ -67,49 +89,49 @@ def initialize_project(args):
     """
     Generate project directories or update existing project.
     """
-    if args['--init']:
-        project = args['--init']
-    else:
-        project = args['--update']
+    project = args['--project']
+    wrappers = resource_filename(Requirement.parse('aws-sceptremods'), 'wrappers')
 
     if not args['--dir']:
-        base_dir = os.getcwd()
+        project_dir = os.getcwd()
     else:
-        base_dir = os.path.abspath(args['--dir'])
-        if not os.path.isdir(base_dir):
-            print('Directory "{}" not found'.format(base_dir))
-            sys.exit(1)
+        project_dir = os.path.abspath(args['--dir'])
+    sceptre_dir = os.path.join(project_dir, 'sceptre')
 
-    print(base_dir)
-    if os.path.basename(base_dir) == project:
-        project_dir = os.path.join(base_dir)
-    else:
-        project_dir = os.path.join(base_dir, project)
+    if args['--refresh']:
+        if not os.path.isdir(sceptre_dir):
+            print('sceptre project not found at {}'.format(sceptre_dir))
+            sys.exit(1)
+        print('refreshing sceptre project at {}'.format(sceptre_dir))
+        refresh_files(
+            os.path.join(wrappers, 'templates'), 
+            os.path.join(sceptre_dir, 'templates')
+        )
 
-    if args['--update']:
-        if not os.path.isdir(project_dir):
-            print('project "{}" not found at {}'.format(project, project_dir))
+    elif args['--update']:
+        if not os.path.isdir(sceptre_dir):
+            print('sceptre project not found at {}'.format(sceptre_dir))
             sys.exit(1)
-        print('updating existing project "{}" at {}'.format(project, project_dir))
+        print('updating sceptre project at {}'.format(sceptre_dir))
+        recursive_overwrite(wrappers, sceptre_dir)
+
     else:
-        if os.path.isdir(project_dir):
-            print('project "{}" already exists at {}'.format(project, project_dir))
+        if os.path.isdir(sceptre_dir):
+            print('sceptre project already exists at {}'.format(sceptre_dir))
             sys.exit(1)
-        print('creating new project "{}" at {}'.format(project, project_dir))
-        config_dir = os.path.join(project_dir, 'config')
+        print('creating new sceptre project "{}" at {}'.format(project, sceptre_dir))
+        config_dir = os.path.join(sceptre_dir, 'config')
         config_file = os.path.join(config_dir, 'config.yaml')
-        os.makedirs(project_dir)
+        os.makedirs(sceptre_dir)
         os.makedirs(config_dir)
         config = dict(
-            project_code=project, 
+            project_code='-'.join(['sceptre', project]),
             region=args['--region'],
             sceptremods_version=sceptremods.__version__,
         )
         with open(config_file, 'w') as f:
             yaml.safe_dump(config, stream=f, default_flow_style=False)
-
-    wrappers = resource_filename(Requirement.parse('aws-sceptremods'), 'wrappers')
-    recursive_overwrite(wrappers, project_dir)
+        recursive_overwrite(wrappers, sceptre_dir)
 
 
 def get_help(module_name):
@@ -126,12 +148,11 @@ def get_help(module_name):
 
 def main():
     args = docopt(__doc__, version='sceptremods %s' % sceptremods.__version__)
-    #print(args)
 
     if args['--list']:
         print('sceptremods modules: \n{}'.format('\n'.join(sceptremods.MODULES)))
 
-    if args['--init'] or args['--update']:
+    if args['--project'] or args['--update'] or args['--refresh']:
         initialize_project(args)
 
     if args['--module']:
