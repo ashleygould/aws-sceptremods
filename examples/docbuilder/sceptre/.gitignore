@@ -1,0 +1,9 @@
+*.swp
+*.swo
+*.vpc
+*.pyc
+__pycache__
+*.egg-info
+*-gen_fixture
+.cache/
+tmp/

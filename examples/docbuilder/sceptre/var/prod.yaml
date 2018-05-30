@@ -1,0 +1,19 @@
+# stack tags
+team: developers
+app: docbuilder
+env: prod
+# account varifier hook
+account_id: '112233445566'
+# trusted subnet for WAF
+on_prem_subnet: '111.222.0.0/16'
+# subdomain name
+service_name: docs
+# route53 domainname
+hosted_zone: excample.com
+# codecommit repo
+project_repository: docbuilder
+project_branch: master
+# sphinx docs location
+project_sphinx_path: docs
+# codebuild buildspec file
+build_spec: aws/docbuilder/codebuild/buildspec-docbuilder.yaml

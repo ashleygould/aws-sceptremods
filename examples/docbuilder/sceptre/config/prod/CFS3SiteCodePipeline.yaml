@@ -1,0 +1,22 @@
+template_path: templates/docbuilder-pipeline.yaml
+
+hooks:
+  before_create:
+    - !account_verifier {{ var.account_id }}
+
+  before_update:
+    - !account_verifier {{ var.account_id }}
+
+stack_tags:
+  seg-team: {{ var.team }}
+  seg-app: {{ var.app }}
+  seg-env: {{ var.env }}
+
+parameters:
+  ProjectName: {{ var.app }}
+  ProjectRepository: {{ var.project_repository }}
+  ProjectBranch: {{ var.project_branch }}
+  ProjectSphinxPath: {{ var.project_sphinx_path }}
+  CFOriginBucket: !stack_output prod/CFS3SiteCFDistribution::OriginBucket
+  BuildSpec: {{ var.build_spec }}
+

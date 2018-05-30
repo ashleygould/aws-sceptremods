@@ -1,0 +1,31 @@
+version: 0.2
+
+phases:
+  install:
+    commands:
+      - aws --version
+      - aws sts get-caller-identity
+      - env
+      - ls -l
+      - pip install -U pip
+      - pip install -U awscli
+      - pip install -U sphinx
+
+  pre_build:
+    commands:
+      - echo ORIGIN_BUCKET is $ORIGIN_BUCKET
+      - echo SPHINX_PATH is $SPHINX_PATH
+      - cd $SPHINX_PATH
+      - BUILDDIR=$(grep ^BUILDDIR Makefile | awk '{print $3}')
+      - echo BUILDDIR is $BUILDDIR
+      - ls -l
+
+  build:
+    commands:
+      - make html
+
+  post_build:
+    commands:
+      - aws s3 sync ${BUILDDIR}/html s3://${ORIGIN_BUCKET} --no-progress
+      #- aws s3 sync ${BUILDDIR}/html s3://${ORIGIN_BUCKET} --delete --no-progress
+

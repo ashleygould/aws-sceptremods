@@ -1,0 +1,20 @@
+template_path: templates/cfs3site-prereqs.yaml
+
+hooks:
+  before_create:
+    - !account_verifier {{ var.account_id }}
+  before_update:
+    - !account_verifier {{ var.account_id }}
+  after_delete:
+    - !s3_bucket action=delete bucket_name=cfs3site-logbucket-{{ var.account_id }}
+
+stack_tags:
+  seg-team: {{ var.team }}
+  seg-app: {{ var.app }}
+  seg-env: {{ var.env }}
+
+parameters:
+  LogBucket: cfs3site-logbucket-{{ var.account_id }}
+  TrustedSubnet: {{ var.on_prem_subnet }}
+  Comment: documentation site on cloudfront
+

@@ -1,0 +1,28 @@
+template_path: templates/cloudfront_s3_website_wrapper.py
+
+hooks:
+  before_create:
+    - !account_verifier {{ var.account_id }}
+    - !route53_hosted_zone {{ var.hosted_zone }}
+    - !acm_certificate action=request cert_fqdn={{ var.service_name }}.{{ var.hosted_zone }} validation_domain={{ var.hosted_zone }} region=us-east-1
+  before_update:
+    - !account_verifier {{ var.account_id }}
+  after_delete:
+    - !s3_bucket action=delete bucket_name=cfs3site-originbucket-{{ var.service_name }}.{{ var.hosted_zone }}
+    - !acm_certificate action=delete cert_fqdn={{ var.service_name }}.{{ var.hosted_zone }} validation_domain={{ var.hosted_zone }} region=us-east-1
+
+stack_tags:
+  seg-team: {{ var.team }}
+  seg-app: {{ var.app }}
+  seg-env: {{ var.env }}
+
+sceptre_user_data:
+  ApplicationName: {{ var.service_name }}
+  HostedZoneDomainName: {{ var.hosted_zone }}
+  LogBucket: !stack_output prod/CFS3SitePrereqs::CFS3SiteLogBucket
+  WebACLId: !stack_output prod/CFS3SitePrereqs::TrustedSubnetWebACL
+  OriginAccessIdentity: !stack_output prod/CFS3SitePrereqs::OriginAccessIdentity
+  S3CanonicalUserId: !stack_output prod/CFS3SitePrereqs::S3CanonicalUserId
+  AcmCertificateARN: !certificate_arn {{ var.service_name }}.{{ var.hosted_zone }}
+  FQDNInternal: {{ var.service_name }}.{{ var.hosted_zone }}
+  DefaultRootObject: index.html
