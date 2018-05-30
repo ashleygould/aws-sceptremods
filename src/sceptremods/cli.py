@@ -128,6 +128,7 @@ def initialize_project(args):
             project_code='-'.join(['sceptre', project]),
             region=args['--region'],
             sceptremods_version=sceptremods.__version__,
+            profile=None,
         )
         with open(config_file, 'w') as f:
             yaml.safe_dump(config, stream=f, default_flow_style=False)
