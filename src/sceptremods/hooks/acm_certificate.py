@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import sys
 import time
+import re
 
 from sceptre.cli import setup_logging
 from sceptre.hooks import Hook
@@ -16,6 +17,32 @@ class AcmCertificate(Hook):
 
     def __init__(self, *args, **kwargs):
         super(AcmCertificate, self).__init__(*args, **kwargs)
+
+
+    def handle_cert_request(self, cert_fqdn, validation_domain, region):
+        """
+        Handle certificate request process.  Allow time for cert to be
+        auto-signed.  Times out after 5 minutes.
+        """
+        acm.request_cert(cert_fqdn, validation_domain, region)
+        tries = 0
+        max_tries = 30
+        interval = 10
+        while tries < max_tries:
+            time.sleep(interval)
+            cert = acm.get_cert_object(cert_fqdn, region)
+            if cert['Status'] != 'ISSUED':
+                tries += 1
+                self.logger.debug('{} - Request status: {}'.format(
+                    __name__, cert['Status'])
+                )
+            else:
+                break
+        self.logger.debug('{} - Cert: {} - Status: {}'.format(
+            __name__, cert_fqdn, cert['Status'])
+        )
+        return
+
 
     def run(self):
         """
@@ -64,36 +91,19 @@ class AcmCertificate(Hook):
             raise InvalidHookArgumentSyntaxError(
                 '{}: required kwargs not found: {}'.format(__name__, missing)
             )
-
         action = kwargs['action']
         cert_fqdn = kwargs['cert_fqdn']
         validation_domain = kwargs['validation_domain']
         region = kwargs['region']
 
+        # determine certificate status and handle accourdingly
+        cert = acm.get_cert_object(cert_fqdn, region)
         if action == 'request':
-            cert = acm.get_cert_object(cert_fqdn, region)
             if not cert:
                 self.logger.debug('{} - Requesting certificate for {}'.format(
                     __name__, cert_fqdn)
                 )
-                acm.request_cert(cert_fqdn, validation_domain, region)
-                # allow time for cert to be auto signed
-                tries = 0
-                max_tries = 30
-                interval = 10
-                while tries < max_tries:
-                    time.sleep(interval)
-                    cert = acm.get_cert_object(cert_fqdn, region)
-                    if cert['Status'] != 'ISSUED':
-                        tries += 1
-                        self.logger.debug('{} - Request status: {}'.format(
-                            __name__, cert['Status'])
-                        )
-                    else:
-                        break
-                self.logger.debug('{} - Cert: {} - Status: {}'.format(
-                    __name__, cert_fqdn, cert['Status'])
-                )
+                self.handle_cert_request(cert_fqdn, validation_domain, region)
 
             elif cert['Status'] == 'ISSUED':
                 self.logger.debug('{} - Cert: {} - Status: {}'.format(
@@ -120,7 +130,7 @@ class AcmCertificate(Hook):
                 self.logger.debug('{} - Re-requesting certificate: {}'.format(
                     __name__, cert_fqdn)
                 )
-                acm.request_cert(cert_fqdn, validation_domain, region)
+                self.handle_cert_request(cert_fqdn, validation_domain, region)
 
             elif cert['Status'] == 'FAILED':
                 raise RuntimeError('ACM certificate request failed: {}'.format(
@@ -132,8 +142,39 @@ class AcmCertificate(Hook):
 
             else:
                 raise RuntimeError('ACM certificate status is {}'.format(cert['Status']))
-        elif action == 'delte':
-            pass
+
+        elif action == 'delete':
+            if cert:
+                self.logger.debug('{} - Deleting certificate: {}'.format(
+                    __name__, cert['CertificateArn'])
+                )
+                acm.cert_validation_record_set(
+                    cert['DomainValidationOptions'][0]['ResourceRecord'],
+                    validation_domain,
+                    'DELETE',
+                )
+                acm.delete_cert(cert['CertificateArn'], region=region)
+
+            # clean up route53 certificate validation CNAME entry
+            if not cert_fqdn.endswith('.'):
+                cert_fqdn += '.'
+            validation_cname_pattern=re.compile(r'_\w{32}\.' + re.escape(cert_fqdn))
+            record_set = acm.get_resource_record_set(
+                hosted_zone=validation_domain,
+                record_type='CNAME',
+                pattern=validation_cname_pattern,
+            )
+            print(record_set)
+            if isinstance(record_set, list):
+                raise RuntimeError('multiple certificate validation CNAME record sets '
+                'found matching "{}"'.format(cert_fqdn)
+            )
+            if record_set:
+                self.logger.debug('{} - Deleting route53 certificate validation '
+                    'CNAME: {}'.format(__name__, cert_fqdn)
+                )
+                acm.change_record_set(record_set, validation_domain, 'DELETE')
+
         else:
             raise InvalidHookArgumentSyntaxError(
                 '{}: value of kwarg "action" must be one of '
