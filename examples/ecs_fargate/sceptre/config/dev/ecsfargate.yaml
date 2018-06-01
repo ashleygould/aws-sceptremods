@@ -1,0 +1,34 @@
+template_path: templates/ecs_fargate_wrapper.py
+
+hooks:
+  before_create:
+    - !account_verifier {{ var.account_id }}
+    - !acm_certificate action=request cert_fqdn={{ var.service_name }}.{{ var.hosted_zone }} validation_domain={{ var.hosted_zone }} region=us-east-1
+  before_update:
+    - !account_verifier {{ var.account_id }}
+  after_delete:
+    - !acm_certificate action=delete cert_fqdn={{ var.service_name }}.{{ var.hosted_zone }} validation_domain={{ var.hosted_zone }} region=us-east-1
+
+stack_tags:
+  seg-team: {{ var.team_name }}
+  seg-app: {{ var.service_name }}
+  seg-env: {{ var.env }}
+
+sceptre_user_data:
+  VpcId: !stack_output_external sceptre-vpcinfra-dev-vpc::VpcId
+  Subnets: !stack_output_external sceptre-vpcinfra-dev-vpc::PrivateSubnets
+  SecurityGroup: !stack_output_external sceptre-vpcinfra-dev-sg::PrivateSecurityGroup
+  LoadBalancerArn: !stack_output {{ var.env }}/alb::LoadBalancerArn
+  LoadBalancerUrl: !stack_output {{ var.env }}/alb::LoadBalancerUrl
+  DefaultListener: !stack_output {{ var.env }}/alb::DefaultListener
+  ListenerPort: 443
+  HostedZone: {{ var.hosted_zone }}
+  ServiceFqdn: {{ var.service_name }}.{{ var.hosted_zone }}
+  Certificates: 
+    - !certificate_arn {{ var.service_name }}.{{ var.hosted_zone }} us-east-1
+  ClusterName: escfargate-{{ var.env }}
+  Family: {{ var.service_name }}-{{ var.env }}
+  ContainerName: {{ var.service_name }}
+  ContainerPort: 80
+  ContainerImage: {{ var.image_name }}
+  ContainerImageVersion: {{ var.image_tag }}

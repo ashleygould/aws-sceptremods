@@ -68,11 +68,11 @@ def get_hosted_zone_id(domain_name, region=DEFAULT_REGION):
     return hosted_zone_ids[0].split("/")[2]
 
 
-def get_elb_hosted_zone_id(elb_arn, region=DEFAULT_REGION):
+def get_elb_hosted_zone_id(elb_arn):
     """
     Return the canonical hosted zoned Id of the given loadbalance arn.
     """
-    elb_client = boto3.client('elbv2', region_name=region)
+    elb_client = boto3.client('elbv2')
     response = elb_client.describe_load_balancers(LoadBalancerArns=[elb_arn])
     return response['LoadBalancers'][0]['CanonicalHostedZoneId']
 

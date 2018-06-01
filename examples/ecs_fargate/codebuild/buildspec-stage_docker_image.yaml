@@ -1,0 +1,50 @@
+---
+version: 0.2
+
+# buildspec-stage_docker_image.yaml
+#
+# Build a docker image and post it to an ECR repository
+#
+# how do I get git commit id or tag info?
+
+phases:
+  install:
+    commands:
+      - echo $BUILDSPEC_DIR
+      - echo $REPOSITORY_URI
+      - echo $DOCKERFILE
+      - echo $GIT_REMOTE
+      - echo $GIT_BRANCH
+      - ls -la
+      - ls -l $BUILDSPEC_DIR
+
+  pre_build:
+    commands:
+      # fetch entire git repo in order to get git tag and commit id
+      - git config --global credential.helper '!aws codecommit credential-helper $@'
+      - git config --global credential.UseHttpPath true
+      - git init
+      - git remote add origin $GIT_REMOTE
+      - git fetch
+      # set docker image tag is based on
+      # (git_tag)-(# of commits since git_tag)-(last commit_id)
+      # as in "v1.2.0-3-29728d8"
+      - IMAGE_TAG=$(git describe origin/${GIT_BRANCH})
+      - DOCKER_IMAGE=$REPOSITORY_URI:$IMAGE_TAG
+      - echo $DOCKER_IMAGE
+  build:
+    commands:
+      - eval $(aws ecr get-login --no-include-email)
+      - docker build -f $DOCKERFILE -t $IMAGE_TAG .
+      - docker tag $IMAGE_TAG $DOCKER_IMAGE
+      - docker push $DOCKER_IMAGE
+  post_build:
+    commands:
+      - echo "IMAGE_TAG=$IMAGE_TAG" > stage_docker_image.outputs
+      - echo "IMAGE_NAME=$REPOSITORY_URI" >> stage_docker_image.outputs
+
+artifacts:
+  files:
+    - stage_docker_image.outputs
+    - devops/**/*
+  discard-paths: "no"

@@ -1,0 +1,3 @@
+env: dev
+#hosted_zone: dev.was.devops.ucop.edu
+hosted_zone: dev.ashley.devops.ucop.edu

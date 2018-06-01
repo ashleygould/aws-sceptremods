@@ -1,0 +1,22 @@
+template_path: templates/ecsfargate-pipeline.yaml
+
+hooks:
+    before_create:
+      - !account_verifier {{ var.account_id }}
+
+    before_update:
+      - !account_verifier {{ var.account_id }}
+
+stack_tags:
+  seg-team: {{ var.team_name }}
+  seg-app: {{ var.service_name }}
+  seg-env: {{ var.env }}
+
+parameters:
+  ProjectName: {{ var.service_name }}-{{ var.env }}
+  RunEnvironment: {{ var.env }}
+  ProjectRepository: !stack_output_external sceptre-ecsrefarch-common-bitbucketsync::CodecommitRepository
+  ProjectBranch: {{ var.env }}
+  Dockerfile: {{ var.docker_file }}
+  EcrRepository: !stack_output_external sceptre-ecsrefarch-common-ecr::EcrRepositoryUri
+

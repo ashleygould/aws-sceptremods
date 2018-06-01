@@ -1,0 +1,3 @@
+env: qa
+#hosted_zone: qa.was.devops.ucop.edu
+hosted_zone: qa.ashley.devops.ucop.edu

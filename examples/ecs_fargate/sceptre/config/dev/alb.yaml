@@ -1,0 +1,19 @@
+template_path: templates/alb_wrapper.py
+hooks:
+  before_create:
+    - !account_verifier {{ var.account_id }}
+  after_delete:
+    - !s3_bucket action=delete bucket_name=elblogs-{{ var.account_id }}-{{ var.service_name }}
+
+stack_tags:
+  seg-team: {{ var.team_name }}
+  seg-app: {{ var.service_name }}
+  seg-env: {{ var.env }}
+
+sceptre_user_data:
+  VpcId: !stack_output_external sceptre-vpcinfra-dev-vpc::VpcId
+  PublicSubnets: !stack_output_external sceptre-vpcinfra-dev-vpc::PublicSubnets
+  PublicSecurityGroup: !stack_output_external sceptre-vpcinfra-dev-sg::PublicSecurityGroup
+  LogBucket: elblogs-{{ var.account_id }}-{{ var.service_name }}-{{ var.env }}
+  LogPrefix: {{ var.service_name }}
+

@@ -1,0 +1,12 @@
+service_name: ecsrefarch
+team_name: was
+env: common
+# was-build:
+#account_id: '497286016891'
+# ashley-training:
+account_id: '071826132890'
+git_repo: ecsfargate-refarch
+docker_file: Dockerfile
+image_name: ucwas/php5.6-apache-base-image
+image_tag: latest
+
