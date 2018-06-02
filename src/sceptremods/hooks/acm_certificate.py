@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+
 import sys
 import time
 import re
@@ -148,11 +148,6 @@ class AcmCertificate(Hook):
                 self.logger.debug('{} - Deleting certificate: {}'.format(
                     __name__, cert['CertificateArn'])
                 )
-                acm.cert_validation_record_set(
-                    cert['DomainValidationOptions'][0]['ResourceRecord'],
-                    validation_domain,
-                    'DELETE',
-                )
                 acm.delete_cert(cert['CertificateArn'], region=region)
 
             # clean up route53 certificate validation CNAME entry
@@ -164,7 +159,6 @@ class AcmCertificate(Hook):
                 record_type='CNAME',
                 pattern=validation_cname_pattern,
             )
-            print(record_set)
             if isinstance(record_set, list):
                 raise RuntimeError('multiple certificate validation CNAME record sets '
                 'found matching "{}"'.format(cert_fqdn)
