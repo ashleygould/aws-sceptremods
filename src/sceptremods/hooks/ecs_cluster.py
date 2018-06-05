@@ -20,9 +20,9 @@ class ECSCluster(Hook):
             )
         )
         if (response['clusters'] 
-            and response['clusters'][0]["clusterName"] == cluster_name
+            and response['clusters'][0]["status"] == 'ACTIVE'
         ):
-            self.logger.debug("{} - Found ECS Cluster: {}".format(
+            self.logger.debug("{} - Found Active ECS Cluster: {}".format(
                 __name__, response['clusters'][0]["clusterArn"])
             )
         else:
