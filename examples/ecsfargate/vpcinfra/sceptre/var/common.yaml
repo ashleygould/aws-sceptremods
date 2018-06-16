@@ -1,0 +1,4 @@
+service_name: vpcinfra
+team_name: seg
+environment: common
+account_id: '112233445566'

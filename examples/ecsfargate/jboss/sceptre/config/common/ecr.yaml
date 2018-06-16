@@ -1,0 +1,16 @@
+template_path: templates/ecr.yaml
+
+hooks:
+    before_create:
+      - !account_verifier {{ var.account_id }}
+    before_update:
+      - !account_verifier {{ var.account_id }}
+
+stack_tags:
+  seg-team: {{ var.team_name }}
+  seg-app: {{ var.service_name }}
+  seg-env: {{ var.environment }}
+
+parameters:
+  RepositoryName: {{ var.git_repo }}
+

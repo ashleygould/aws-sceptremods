@@ -1,0 +1,63 @@
+template_path: templates/ecs_fargate_wrapper.py
+
+hooks:
+  before_create:
+    - !account_verifier    {{ var.account_id }}
+    - !route53_hosted_zone {{ var.hosted_zone }}
+    - !ecs_task_exec_role
+    - !ecs_cluster         escfargate-{{ var.service_name }}
+    - !acm_certificate |
+        action=request
+        cert_fqdn={{ var.service_name }}-{{ var.environment }}.{{ var.hosted_zone }}
+        validation_domain={{ var.hosted_zone }}
+        region={{ var.region }}
+  before_update:
+    - !account_verifier    {{ var.account_id }}
+    - !acm_certificate |
+        action=request
+        cert_fqdn={{ var.service_name }}-{{ var.environment }}.{{ var.hosted_zone }}
+        validation_domain={{ var.hosted_zone }}
+        region={{ var.region }}
+  after_delete:
+    - !acm_certificate |
+        action=delete
+        cert_fqdn={{ var.service_name }}-{{ var.environment }}.{{ var.hosted_zone }}
+        validation_domain={{ var.hosted_zone }}
+        region={{ var.region }}
+
+stack_tags:
+  seg-team: {{ var.team_name }}
+  seg-app:  {{ var.service_name }}
+  seg-env:  {{ var.environment }}
+
+sceptre_user_data:
+  VpcId:           !stack_output_external sceptre-vpcinfra-common-vpc::VpcId
+  Subnets:         !stack_output_external sceptre-vpcinfra-common-vpc::PrivateSubnets
+  SecurityGroup:   !stack_output_external sceptre-{{ var.service_name }}-common-sg::PrivateSecurityGroup
+  LoadBalancerArn: !stack_output {{ var.environment }}/alb::LoadBalancerArn
+  LoadBalancerUrl: !stack_output {{ var.environment }}/alb::LoadBalancerUrl
+  DefaultListener: !stack_output {{ var.environment }}/alb::DefaultListener
+  ListenerPort:    {{ var.listener_port }}
+  HostedZone:      {{ var.hosted_zone }}
+  ServiceFqdn:     {{ var.service_name }}-{{ var.environment }}.{{ var.hosted_zone }}
+  Certificates: 
+    - !certificate_arn |
+        {{ var.service_name }}-{{ var.environment }}.{{ var.hosted_zone }} 
+        {{ var.region }}
+  ClusterName:     escfargate-{{ var.service_name }}
+  Family:          {{ var.service_name }}-{{ var.environment }}
+  ContainerName:   {{ var.service_name }}
+  ContainerPort:   {{ var.container_port }}
+  ContainerImage:  {{ var.image_name }}
+  ContainerImageVersion: {{ var.image_tag }}
+  HealthCheckAttributes:  
+    HealthCheckIntervalSeconds: {{ var.healthcheck_interval_seconds }}
+    HealthCheckPath:            {{ var.healthcheck_path }}
+    Matcher:
+      HttpCode: "{{ var.healthcheck_http_code }}"
+    # for now these just the following use defaults
+    #HealthCheckPort:           {{ var.container_port }}
+    #HealthCheckProtocol:       HTTP
+    #HealthCheckTimeoutSeconds: 5
+    #HealthyThresholdCount:     2
+    #UnhealthyThresholdCount:   5

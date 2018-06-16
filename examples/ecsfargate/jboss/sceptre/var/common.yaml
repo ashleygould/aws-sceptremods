@@ -1,0 +1,48 @@
+# Custom vars for project
+#
+# tags
+service_name: ecsjboss
+team_name: seg
+environment: common
+
+# ECS Fargate now supported in us-west-2.  Horray!
+region: us-west-2
+
+# AWS Account Id. This prevents accidentally mangling resources in the wrong account.
+account_id: '112233445566'
+
+# route53 hosted zone 
+hosted_zone: example.com
+
+# default source ip for public security groups
+allowed_ingress_source_ip: 172.16.0.0/16
+
+# the network port of the ALB Listener
+listener_port: 443
+
+# the port number on the ECS container
+container_port: 8080
+
+# name of the codecommit git repo to use for codepipeline source stage
+git_repo: s-team
+
+# path to sceptre project relative to root of this git repo
+sceptre_dir: aws/ecsjboss/sceptre
+
+# directory where codebuild buildspec files are staged relative to root of this git repo.
+buildspec_dir: aws/ecsjboss/codebuild
+
+# path to docker build dir relative to root of this git repo
+docker_dir: docker/jboss
+
+# name of dockerfile within the docker_dir
+docker_file: Dockerfile-jboss
+
+# default docker image to use for initial aws resource build
+image_name: jboss/wildfly
+image_tag: latest
+
+# ECS healthcheck parameters
+healthcheck_interval_seconds: 120
+healthcheck_path: /
+healthcheck_http_code: 200

@@ -1,0 +1,34 @@
+version: 0.2
+
+phases:
+  install:
+    commands:
+      - echo $BUILDSPEC_DIR
+      - echo $ENVIRONMENT
+      - echo $SERVICE_NAME
+      - echo $SCEPTRE_DIR
+      - ls -la
+      - ls -l $BUILDSPEC_DIR
+      - find $SCEPTRE_DIR
+      - python --version
+      - pip list
+      - pip install --upgrade pip
+      - pip install --upgrade awscli
+      - pip install boto3 
+      - pip install https://github.com/cloudreach/sceptre/archive/master.zip
+      - pip install https://github.com/ashleygould/aws-sceptremods/archive/master.zip
+      - pip list
+      - sceptre --help
+      - sceptremods -l
+  pre_build:
+    commands:
+      - cat stage_docker_image.outputs
+      - eval $(cat stage_docker_image.outputs)
+      - echo $IMAGE_TAG
+      - echo $IMAGE_NAME
+  build:
+    commands:
+      - sceptre --dir $SCEPTRE_DIR --var-file $SCEPTRE_DIR/var/common.yaml --var environment=$ENVIRONMENT --var image_name=${IMAGE_NAME} --var image_tag=${IMAGE_TAG} update --yes $ENVIRONMENT/ecsfargate.yaml
+  post_build:
+    commands:
+      - sceptre --dir $SCEPTRE_DIR --var-file $SCEPTRE_DIR/var/common.yaml list outputs $ENVIRONMENT/ecsfargate.yaml

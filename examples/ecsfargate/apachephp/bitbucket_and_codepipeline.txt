@@ -1,0 +1,92 @@
+
+
+____________________________________________________________________________
+This one clones bitbucket repo into codecommit repo with each git push using
+ssh access identity and bitbucket 'pipelines':
+https://medium.com/@jay_proulx/aws-codecommit-from-atlassian-bitbucket-and-bitbucket-pipelines-for-ci-offloading-4f1131695802
+
+
+Configure Pipeline in Bitbucket
+-------------------------------
+
+Enable pipelines:
+
+- select 'Settings'
+- under 'PIPELINES' select 'Settings'
+- select 'Enable Pipelines'
+- select 'SSH Keys'
+- select 'Generate Keys'
+- under 'Known Hosts' enter into 'Host Address' box:
+  `git-codecommit.<region>.amazonaws.com` where <region> is the AWS region
+  of the codecommit repository you will be syncing to. example::
+
+    git-codecommit.us-east-1.amazonaws.com
+  
+- select 'fetch'
+- select 'Add Host'
+
+
+Configure AWS SSH Key for IAM codecommit user
+
+- copy SSH public key from bitbucket into the file 
+  devops/bitbucket/id_rsa.pub
+
+- in AWS console, select IAM
+- select Users
+- select your bitbucket2codecommit user
+- select 'Security Credentials'
+- select 'Upload SSH Public Key'
+- paste the contents of the bitbucket SSH public key into the entry box
+- select 'Upload SSH Public Key'
+- make a note of the SSH Key Id just created 
+
+
+Configure bitbucket pipeline in your project repository:
+
+- edit the file devops/bitbucket/pipeline.conf with the following::
+
+  CodeCommitRepo=<repository name>
+  CodeCommitUser=<IAM codecommit user SSH Key Id>
+  CodeCommitHost=git-codecommit.<region>.amazonaws.com
+
+- create the file `bitbucket-pipelines.yml` with the following contents::
+
+'''
+> cat bitbucket-pipelines.yml 
+# Bitbucket Pipeline Build Spec
+#
+# Pushes current branch to the configured AWS CodeCommit repository.
+# Set CodeCommit repository configuration in ${RepoConfigDir}/pipeline-${BITBUCKET_BRANCH}.conf
+#
+image: python:3.5.1
+
+pipelines:
+  default:
+    - step:
+        script:
+          - RepoConfigDir=devops/bitbucket
+          - ls -l $RepoConfigDir
+          - test -f ${RepoConfigDir}/pipeline-${BITBUCKET_BRANCH}.conf && RepoConfig=${RepoConfigDir}/pipeline-${BITBUCKET_BRANCH}.conf || RepoConfig=${RepoConfigDir}/pipeline.conf
+          - echo $RepoConfig
+          - cat $RepoConfig
+          - eval $(cat $RepoConfig)
+          - echo "Host=${CodeCommitHost}" >> ~/.ssh/config
+          - echo "User=${CodeCommitUser}" >> ~/.ssh/config
+          - cat ~/.ssh/config
+          - git remote add codecommit ssh://${CodeCommitHost}/v1/repos/${CodeCommitRepo}
+          - git push codecommit $BITBUCKET_BRANCH --tags
+'''
+
+
+
+
+
+
+iam user has attached policy AWSCodeCommitPowerUser
+
+upload ssh pubkey into Iam user and copy ssh key Id
+
+~/.ssh/config:
+Host git-codecommit.*.amazonaws.com
+  User APKAJ7HIWIP3ETEX6ELQ
+  IdentityFile ~/.ssh/codecommit_was-build_rsa
