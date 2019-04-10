@@ -11,7 +11,7 @@ Installation
 Install to python 3.6 virtual environment::
 
   source ~/python-venv/python3.6/bin/activate
-  git clone https://github.com/ashleygould/aws-sceptremods.git
+  git clone https://github.com/ucopacme/aws-sceptremods.git
   pip install -e aws-sceptremods
 
  
