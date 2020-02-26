@@ -1,0 +1,55 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Outputs": {
+    "PrivateSecurityGroup": {
+      "Description": "allow inbound traffic from public security group on any port",
+      "Value": {
+        "Ref": "PrivateSecurityGroup"
+      }
+    },
+    "PublicSecurityGroup": {
+      "Description": "allow inbound traffic from internet on specified ports",
+      "Value": {
+        "Ref": "PublicSecurityGroup"
+      }
+    }
+  },
+  "Resources": {
+    "PrivateSecurityGroup": {
+      "Properties": {
+        "GroupDescription": "allow inbound traffic from public security group on any port",
+        "SecurityGroupIngress": [
+          {
+            "IpProtocol": "-1",
+            "SourceSecurityGroupId": {
+              "Ref": "PublicSecurityGroup"
+            }
+          }
+        ],
+        "VpcId": "vpc-bab4cdc1"
+      },
+      "Type": "AWS::EC2::SecurityGroup"
+    },
+    "PublicSecurityGroup": {
+      "Properties": {
+        "GroupDescription": "allow inbound traffic from internet on specified ports",
+        "SecurityGroupIngress": [
+          {
+            "CidrIp": "128.48.0.0/16",
+            "FromPort": "80",
+            "IpProtocol": "tcp",
+            "ToPort": "80"
+          },
+          {
+            "CidrIp": "128.48.0.0/16",
+            "FromPort": "443",
+            "IpProtocol": "tcp",
+            "ToPort": "443"
+          }
+        ],
+        "VpcId": "vpc-bab4cdc1"
+      },
+      "Type": "AWS::EC2::SecurityGroup"
+    }
+  }
+}

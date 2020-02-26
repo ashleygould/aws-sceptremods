@@ -1,0 +1,147 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Outputs": {
+    "ServiceUrl": {
+      "Description": "The fully qualified URL of the service",
+      "Value": "https://ecsrefarch.dev.ashley.devops.ucop.edu"
+    }
+  },
+  "Resources": {
+    "FargateService": {
+      "DependsOn": "Listener",
+      "Properties": {
+        "Cluster": "escfargate-dev",
+        "DesiredCount": 1,
+        "LaunchType": "FARGATE",
+        "LoadBalancers": [
+          {
+            "ContainerName": "ecsrefarch",
+            "ContainerPort": 80,
+            "TargetGroupArn": {
+              "Ref": "TargetGroup"
+            }
+          }
+        ],
+        "NetworkConfiguration": {
+          "AwsvpcConfiguration": {
+            "SecurityGroups": [
+              "sg-8847c1c1"
+            ],
+            "Subnets": [
+              "subnet-380baa72",
+              "subnet-e2ecf0bf"
+            ]
+          }
+        },
+        "TaskDefinition": {
+          "Ref": "TaskDefinition"
+        }
+      },
+      "Type": "AWS::ECS::Service"
+    },
+    "Listener": {
+      "Properties": {
+        "Certificates": [
+          {
+            "CertificateArn": "arn:aws:acm:us-east-1:071826132890:certificate/3bd6418d-4f92-435f-a579-070a5e776a69"
+          }
+        ],
+        "DefaultActions": [
+          {
+            "TargetGroupArn": {
+              "Ref": "TargetGroup"
+            },
+            "Type": "forward"
+          }
+        ],
+        "LoadBalancerArn": "arn:aws:elasticloadbalancing:us-east-1:071826132890:loadbalancer/app/scept-Appli-1WBW5AMZKVZPB/da61dbb07445e17b",
+        "Port": 443,
+        "Protocol": "HTTPS"
+      },
+      "Type": "AWS::ElasticLoadBalancingV2::Listener"
+    },
+    "LogGroup": {
+      "Properties": {
+        "LogGroupName": "FargateLogGroup-ecsrefarch-dev",
+        "RetentionInDays": 14
+      },
+      "Type": "AWS::Logs::LogGroup"
+    },
+    "RecordSetGroup": {
+      "Properties": {
+        "HostedZoneName": "dev.ashley.devops.ucop.edu.",
+        "RecordSets": [
+          {
+            "AliasTarget": {
+              "DNSName": "scept-Appli-1WBW5AMZKVZPB-1356658819.us-east-1.elb.amazonaws.com",
+              "HostedZoneId": "Z35SXDOTRQ7X7K"
+            },
+            "Name": "ecsrefarch.dev.ashley.devops.ucop.edu.",
+            "Type": "A"
+          }
+        ]
+      },
+      "Type": "AWS::Route53::RecordSetGroup"
+    },
+    "TargetGroup": {
+      "Properties": {
+        "Port": 80,
+        "Protocol": "HTTP",
+        "TargetType": "ip",
+        "VpcId": "vpc-bab4cdc1"
+      },
+      "Type": "AWS::ElasticLoadBalancingV2::TargetGroup"
+    },
+    "TaskDefinition": {
+      "Properties": {
+        "ContainerDefinitions": [
+          {
+            "Image": "ucwas/php5.6-apache-base-image:latest",
+            "LogConfiguration": {
+              "LogDriver": "awslogs",
+              "Options": {
+                "awslogs-group": {
+                  "Ref": "LogGroup"
+                },
+                "awslogs-region": {
+                  "Ref": "AWS::Region"
+                },
+                "awslogs-stream-prefix": "ecsrefarch"
+              }
+            },
+            "Name": "ecsrefarch",
+            "PortMappings": [
+              {
+                "ContainerPort": 80,
+                "Protocol": "tcp"
+              }
+            ]
+          }
+        ],
+        "Cpu": "256",
+        "ExecutionRoleArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:aws:iam::",
+              {
+                "Ref": "AWS::AccountId"
+              },
+              ":role/ecsTaskExecutionRole"
+            ]
+          ]
+        },
+        "Family": "ecsrefarch-dev",
+        "Memory": "512",
+        "NetworkMode": "awsvpc",
+        "RequiresCompatibilities": [
+          "FARGATE"
+        ],
+        "TaskRoleArn": {
+          "Ref": "AWS::NoValue"
+        }
+      },
+      "Type": "AWS::ECS::TaskDefinition"
+    }
+  }
+}
